@@ -13,7 +13,7 @@ Nie buduj niczego z późniejszych etapów (worker, sandbox, agenci, pipeline, G
 
 ## Stack (decyzje podjęte, nie zmieniaj bez pytania)
 
-- Monorepo: pnpm workspaces + Turborepo, TypeScript w trybie strict, Node.js 22.
+- Monorepo: pnpm workspaces + Turborepo, TypeScript w trybie strict, Node.js 24.
 - Frontend `apps/web`: React + Vite, TanStack Router, TanStack Query, Zustand, Tailwind CSS + shadcn/ui, React Hook Form + Zod.
 - API `apps/api`: Express 5, pełne REST, OpenAPI generowane ze schematów Zod, SSE dla zdarzeń na żywo (od etapu 3), logi pino.
 - Baza `packages/db`: PostgreSQL 16 + Drizzle ORM (migracje w repo). Kolejka w późniejszych etapach: pg-boss (bez Redisa).
@@ -35,6 +35,7 @@ Nie buduj niczego z późniejszych etapów (worker, sandbox, agenci, pipeline, G
 9. **Nie zmieniaj `docs/architecture.md` bez prośby.** Gdy decyzja z dokumentu okazuje się zła, powiedz o tym i zaproponuj zmianę sekcji 18.
 10. **Nie rób commitów ani push.** Na końcu zadania zaproponuj wiadomość commita (Conventional Commits, po angielsku). Commit robi człowiek po review.
 11. **Zależności.** Używaj aktualnych stabilnych wersji. Przed dodaniem nowej biblioteki spoza listy w sekcji 4 dokumentu architektury zapytaj.
+12. **Bez atrybucji AI w commitach.** Nie dopisuj do wiadomości commitów informacji, że powstały przy współpracy z AI (np. `Co-Authored-By: Claude ...`, „Generated with Claude Code”).
 
 ## Konwencje
 

@@ -1,0 +1,12 @@
+# The repo is developed on Windows with core.autocrlf enabled. Without this the
+# working copy gets CRLF on checkout and `pnpm format:check` fails on every file,
+# because Prettier is configured with endOfLine: "lf".
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary

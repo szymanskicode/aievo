@@ -1,0 +1,12 @@
+node_modules/
+dist/
+build/
+.turbo/
+coverage/
+pnpm-lock.yaml
+drizzle/
+
+# Hand-written documents: Prettier must not reflow them.
+docs/
+START.md
+CLAUDE.md

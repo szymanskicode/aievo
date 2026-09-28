@@ -1,0 +1,36 @@
+{
+  "name": "aievo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Self-hosted platform where configurable AI agents deliver tasks as pull requests",
+  "packageManager": "pnpm@12.5.1",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:migrate": "node -e \"console.log('db:migrate: not implemented yet (prompt 2)')\"",
+    "db:seed": "node -e \"console.log('db:seed: not implemented yet (prompt 2)')\"",
+    "test:e2e": "node -e \"console.log('test:e2e: not implemented yet (prompt 5)')\""
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.11.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "globals": "^17.12.0",
+    "prettier": "^3.9.9",
+    "turbo": "^2.11.4",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.70.1",
+    "vitest": "^5.0.2"
+  }
+}

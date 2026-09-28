@@ -1,0 +1,8 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# Packages allowed to run install scripts (esbuild ships a prebuilt native binary
+# used by tsx, vite and drizzle-kit).
+allowBuilds:
+  esbuild: true

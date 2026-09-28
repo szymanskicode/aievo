@@ -25,9 +25,11 @@ export const providerCredential = pgTable(
       .references(() => workspace.id, { onDelete: 'cascade' }),
     type: providerTypeEnum().notNull(),
     label: text().notNull(),
-    // AES-256-GCM ciphertext; the format is defined together with encryption (prompt 4).
-    encryptedKey: text().notNull(),
-    keyHint: varchar({ length: 4 }).notNull(),
+    // `v1:<iv>:<tag>:<ciphertext>` from `@aievo/shared/crypto` (AES-256-GCM), never plaintext.
+    // Null for providers that work without a key (e.g. a local Ollama).
+    encryptedKey: text(),
+    // Last 4 characters shown in the UI; null without a key or for keys too short to hint.
+    keyHint: varchar({ length: 4 }),
     baseUrl: text(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),

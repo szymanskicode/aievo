@@ -24,8 +24,39 @@ export type {
 export { workspaceLimitsSchema, workspaceSettingsSchema } from './schemas/workspace.js';
 export type { WorkspaceLimits, WorkspaceSettings } from './schemas/workspace.js';
 
-export { modelCapabilitiesSchema } from './schemas/model.js';
-export type { ModelCapabilities } from './schemas/model.js';
+export {
+  modelCapabilitiesPatchSchema,
+  modelCapabilitiesSchema,
+  modelListQuerySchema,
+  modelSchema,
+  providerTestResultSchema,
+  updateModelSchema,
+} from './schemas/model.js';
+export type {
+  ModelCapabilities,
+  ModelCapabilitiesPatch,
+  ModelDto,
+  ModelListQuery,
+  ProviderTestResult,
+  UpdateModelInput,
+} from './schemas/model.js';
+
+export {
+  createProviderSchema,
+  missingProviderFields,
+  providerSchema,
+  providerTypeInfo,
+  providerTypeInfoList,
+  providerTypeInfoSchema,
+  updateProviderSchema,
+} from './schemas/provider.js';
+export type {
+  CreateProviderInput,
+  FieldRequirement,
+  ProviderDto,
+  ProviderTypeInfo,
+  UpdateProviderInput,
+} from './schemas/provider.js';
 
 export {
   createProjectSchema,

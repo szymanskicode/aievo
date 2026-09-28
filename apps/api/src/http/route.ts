@@ -1,4 +1,5 @@
 import type { Db } from '@aievo/db';
+import type { SecretBox } from '@aievo/shared/crypto';
 import type { Request, RequestHandler, Response, Router } from 'express';
 import type { z } from 'zod';
 
@@ -39,6 +40,8 @@ type Parsed<S> = S extends z.ZodType ? z.output<S> : undefined;
 
 export interface RouteContext {
   db: Db;
+  /** Encrypts and decrypts provider keys; see `@aievo/shared/crypto`. */
+  secretBox: SecretBox;
 }
 
 export interface PublicHandlerInput<P, Q, B> extends RouteContext {

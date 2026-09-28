@@ -1,4 +1,5 @@
 import type { Db } from '@aievo/db';
+import type { SecretBox } from '@aievo/shared/crypto';
 import express, { type ErrorRequestHandler, type Express } from 'express';
 import { pinoHttp } from 'pino-http';
 
@@ -12,15 +13,27 @@ import { API_PREFIX, apiRoutes } from './routes.js';
 export interface CreateAppOptions {
   db: Db;
   logger?: Logger;
+  /**
+   * Required by the provider routes. Without it those routes answer 500, which keeps
+   * apps built for unrelated tests simple; `index.ts` always passes one.
+   */
+  secretBox?: SecretBox;
   /** Defaults to the seeded workspace; tests bind the app to a workspace of their own. */
   resolveWorkspace?: WorkspaceResolver;
 }
 
 export { API_PREFIX };
 
+function failingSecretBox(): never {
+  throw new Error('Secret box is not configured (AIEVO_MASTER_KEY)');
+}
+
+const missingSecretBox: SecretBox = { encrypt: failingSecretBox, decrypt: failingSecretBox };
+
 export function createApp({
   db,
   logger,
+  secretBox = missingSecretBox,
   resolveWorkspace = defaultWorkspaceResolver,
 }: CreateAppOptions): Express {
   const app = express();
@@ -34,7 +47,7 @@ export function createApp({
   app.use(express.json());
 
   const api = express.Router();
-  mountRoutes(api, apiRoutes, { db, resolveWorkspace });
+  mountRoutes(api, apiRoutes, { db, secretBox, resolveWorkspace });
   app.use(API_PREFIX, api);
 
   app.use((req, _res, next) => {

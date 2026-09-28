@@ -8,6 +8,13 @@
       "when": 1790625995708,
       "tag": "0000_sticky_puff_adder",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790630459802,
+      "tag": "0001_provider_key_optional",
+      "breakpoints": true
     }
   ]
 }

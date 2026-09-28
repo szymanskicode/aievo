@@ -3,10 +3,17 @@ import { pino, type DestinationStream, type Logger } from 'pino';
 import type { Env } from './env.js';
 
 /**
- * Header values that must never reach the logs. pino-http logs the whole header
- * object, so redaction is configured on the logger itself rather than per call.
+ * Values that must never reach the logs. pino-http logs the whole header object, so
+ * redaction is configured on the logger itself rather than per call. Provider keys are
+ * also covered wherever an object carrying them might be logged by mistake.
  */
 const REDACTED_PATHS = [
+  'apiKey',
+  'encryptedKey',
+  '*.apiKey',
+  '*.encryptedKey',
+  '*.*.apiKey',
+  '*.*.encryptedKey',
   'req.headers.authorization',
   'req.headers.cookie',
   'req.headers["x-api-key"]',

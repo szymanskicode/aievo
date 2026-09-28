@@ -6,3 +6,5 @@ packages:
 # used by tsx, vite and drizzle-kit).
 allowBuilds:
   esbuild: true
+  # Only copies the browser service worker; tests use msw in Node, so it is not needed.
+  msw: false

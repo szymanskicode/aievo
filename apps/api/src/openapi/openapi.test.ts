@@ -27,6 +27,14 @@ const EXPECTED_OPERATIONS = [
   'GET /api/tasks/{id}',
   'PATCH /api/tasks/{id}',
   'DELETE /api/tasks/{id}',
+  'GET /api/provider-types',
+  'GET /api/providers',
+  'POST /api/providers',
+  'PATCH /api/providers/{id}',
+  'DELETE /api/providers/{id}',
+  'POST /api/providers/{id}/test',
+  'GET /api/models',
+  'PATCH /api/models/{id}',
 ];
 
 const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete'] as const;

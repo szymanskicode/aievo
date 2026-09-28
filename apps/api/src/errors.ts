@@ -1,4 +1,6 @@
 import { InvalidReferenceError } from '@aievo/db';
+import { ProviderError } from '@aievo/llm';
+import type { ProviderErrorKind } from '@aievo/llm';
 import type { z } from 'zod';
 
 /** Error payload shared by every API response: `{ error: { code, message, details? } }`. */
@@ -36,7 +38,7 @@ export function notFound(path: string): ApiError {
   return new ApiError(404, 'not_found', `No route matches ${path}`);
 }
 
-export function resourceNotFound(entity: 'Project' | 'Task'): ApiError {
+export function resourceNotFound(entity: 'Project' | 'Task' | 'Provider' | 'Model'): ApiError {
   return new ApiError(404, 'not_found', `${entity} not found`);
 }
 
@@ -59,6 +61,40 @@ export function validationError(issues: readonly z.core.$ZodIssue[]): ApiError {
     message: issue.message,
   }));
   return new ApiError(400, 'validation_error', 'Request validation failed', details);
+}
+
+/** A field that the provider type requires would be missing after the write. */
+export function missingFieldsError(fields: readonly string[], message: string): ApiError {
+  const details: ValidationIssue[] = fields.map((field) => ({
+    path: ['body', field],
+    code: 'custom',
+    message,
+  }));
+  return new ApiError(400, 'validation_error', 'Request validation failed', details);
+}
+
+const PROVIDER_ERRORS: Record<ProviderErrorKind, { status: number; code: string }> = {
+  unauthorized: { status: 400, code: 'provider_auth_failed' },
+  forbidden: { status: 400, code: 'provider_auth_failed' },
+  rate_limited: { status: 429, code: 'provider_rate_limited' },
+  timeout: { status: 504, code: 'provider_timeout' },
+  network: { status: 502, code: 'provider_unavailable' },
+  unavailable: { status: 502, code: 'provider_unavailable' },
+  not_found: { status: 502, code: 'provider_bad_response' },
+  bad_response: { status: 502, code: 'provider_bad_response' },
+};
+
+/** Status codes a route that calls a model provider can answer with. */
+export const PROVIDER_ERROR_STATUSES = [429, 502, 504];
+
+/**
+ * `ProviderError` messages are fixed texts written in `@aievo/llm`, so they are safe to
+ * return. Only the provider's HTTP status is added; its body and headers never are.
+ */
+function fromProviderError(error: ProviderError): ApiError {
+  const { status, code } = PROVIDER_ERRORS[error.kind];
+  const details = error.status === undefined ? undefined : { providerStatus: error.status };
+  return new ApiError(status, code, error.message, details);
 }
 
 /**
@@ -91,6 +127,10 @@ function readStatus(error: unknown): number | undefined {
 export function toApiError(error: unknown): ApiError {
   if (error instanceof ApiError) {
     return error;
+  }
+
+  if (error instanceof ProviderError) {
+    return fromProviderError(error);
   }
 
   if (error instanceof InvalidReferenceError) {

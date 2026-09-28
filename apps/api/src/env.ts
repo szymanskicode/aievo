@@ -1,3 +1,4 @@
+import { MasterKeyError, parseMasterKey } from '@aievo/shared/crypto';
 import { z } from 'zod';
 
 const envSchema = z.object({
@@ -24,4 +25,22 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   }
 
   return result.data;
+}
+
+/**
+ * Reads `AIEVO_MASTER_KEY`, which encrypts provider keys at rest. Kept apart from
+ * `loadEnv` so the value never becomes part of the general config object.
+ */
+export function loadMasterKey(source: NodeJS.ProcessEnv = process.env): Buffer {
+  try {
+    return parseMasterKey(source.AIEVO_MASTER_KEY);
+  } catch (error) {
+    if (error instanceof MasterKeyError) {
+      // The cause is safe to keep: MasterKeyError never contains the key itself.
+      throw new Error(`Invalid environment configuration:\n  ${error.message}`, {
+        cause: error,
+      });
+    }
+    throw error;
+  }
 }

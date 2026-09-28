@@ -14,3 +14,27 @@ export {
 export type { NewProjectInput, Project, ProjectPatch } from './repositories/projects.js';
 export { createTask, deleteTask, getTask, listTasks, updateTask } from './repositories/tasks.js';
 export type { NewTaskInput, Task, TaskFilter, TaskPatch } from './repositories/tasks.js';
+export {
+  createProvider,
+  deleteProvider,
+  getProvider,
+  listProviders,
+  updateProvider,
+} from './repositories/providers.js';
+export type {
+  NewProviderInput,
+  ProviderCredential,
+  ProviderPatch,
+} from './repositories/providers.js';
+export {
+  getModel,
+  listModels,
+  updateModel,
+  upsertDiscoveredModels,
+} from './repositories/models.js';
+export type {
+  DiscoveredModelInput,
+  Model,
+  ModelFilter,
+  ModelPatch,
+} from './repositories/models.js';

@@ -10,7 +10,7 @@ export const membershipRoleSchema = z.enum(membershipRoles);
 export type MembershipRole = z.infer<typeof membershipRoleSchema>;
 
 export const providerTypes = ['anthropic', 'openai', 'openai-compatible'] as const;
-export const providerTypeSchema = z.enum(providerTypes);
+export const providerTypeSchema = z.enum(providerTypes).meta({ id: 'ProviderType' });
 export type ProviderType = z.infer<typeof providerTypeSchema>;
 
 export const taskTypes = ['feature', 'bug', 'refactor', 'test', 'chore'] as const;

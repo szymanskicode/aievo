@@ -17,6 +17,10 @@
       "dependsOn": ["^build"],
       "env": ["DATABASE_URL_TEST"]
     },
+    "@aievo/api#test": {
+      "dependsOn": ["^build", "@aievo/db#test"],
+      "env": ["DATABASE_URL_TEST"]
+    },
     "dev": {
       "dependsOn": ["^build"],
       "cache": false,

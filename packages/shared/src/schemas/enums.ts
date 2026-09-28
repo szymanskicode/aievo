@@ -14,11 +14,11 @@ export const providerTypeSchema = z.enum(providerTypes);
 export type ProviderType = z.infer<typeof providerTypeSchema>;
 
 export const taskTypes = ['feature', 'bug', 'refactor', 'test', 'chore'] as const;
-export const taskTypeSchema = z.enum(taskTypes);
+export const taskTypeSchema = z.enum(taskTypes).meta({ id: 'TaskType' });
 export type TaskType = z.infer<typeof taskTypeSchema>;
 
 export const taskPriorities = ['low', 'medium', 'high'] as const;
-export const taskPrioritySchema = z.enum(taskPriorities);
+export const taskPrioritySchema = z.enum(taskPriorities).meta({ id: 'TaskPriority' });
 export type TaskPriority = z.infer<typeof taskPrioritySchema>;
 
 /** Task lifecycle from docs/architecture.md, section 8. */
@@ -33,5 +33,5 @@ export const taskStatuses = [
   'failed',
   'cancelled',
 ] as const;
-export const taskStatusSchema = z.enum(taskStatuses);
+export const taskStatusSchema = z.enum(taskStatuses).meta({ id: 'TaskStatus' });
 export type TaskStatus = z.infer<typeof taskStatusSchema>;

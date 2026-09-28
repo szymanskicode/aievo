@@ -1,0 +1,1337 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "AIEvo API",
+    "version": "0.1.0",
+    "description": "REST API of AIEvo. Errors use `{ error: { code, message, details? } }`."
+  },
+  "components": {
+    "schemas": {
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "Project": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "repoUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "defaultBranch": {
+            "type": "string"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/ProjectSettings"
+          },
+          "testPolicy": {
+            "$ref": "#/components/schemas/TestPolicy"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "repoUrl",
+          "defaultBranch",
+          "settings",
+          "testPolicy",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "ProjectSettings": {
+        "type": "object",
+        "properties": {
+          "commands": {
+            "type": "object",
+            "properties": {
+              "install": {
+                "type": "string",
+                "minLength": 1
+              },
+              "build": {
+                "type": "string",
+                "minLength": 1
+              },
+              "lint": {
+                "type": "string",
+                "minLength": 1
+              },
+              "test": {
+                "type": "string",
+                "minLength": 1
+              },
+              "coverage": {
+                "type": "string",
+                "minLength": 1
+              },
+              "dev": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "required": [
+          "commands"
+        ]
+      },
+      "TestPolicy": {
+        "type": "object",
+        "properties": {
+          "framework": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "vitest",
+              "jest"
+            ]
+          },
+          "commands": {
+            "type": "object",
+            "properties": {
+              "test": {
+                "type": "string",
+                "minLength": 1
+              },
+              "coverage": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "test",
+              "coverage"
+            ]
+          },
+          "coverageFormat": {
+            "type": "string",
+            "enum": [
+              "istanbul-json",
+              "lcov",
+              "cobertura"
+            ]
+          },
+          "changedLines": {
+            "type": "object",
+            "properties": {
+              "minLineCoverage": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "minBranchCoverage": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 100
+              }
+            },
+            "required": [
+              "minLineCoverage",
+              "minBranchCoverage"
+            ]
+          },
+          "global": {
+            "type": "object",
+            "properties": {
+              "failIfDropsBy": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0
+              }
+            },
+            "required": [
+              "failIfDropsBy"
+            ]
+          },
+          "requiredTypes": {
+            "type": "object",
+            "properties": {
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "always",
+                  "never"
+                ]
+              },
+              "integration": {
+                "type": "string",
+                "enum": [
+                  "always",
+                  "on_api_change",
+                  "never"
+                ]
+              },
+              "e2e": {
+                "type": "string",
+                "enum": [
+                  "always",
+                  "on_acceptance_criteria",
+                  "never"
+                ]
+              }
+            },
+            "required": [
+              "unit",
+              "integration",
+              "e2e"
+            ]
+          },
+          "testPaths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "exclude": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "audit": {
+            "type": "object",
+            "properties": {
+              "onEveryRun": {
+                "type": "boolean"
+              },
+              "scheduled": {
+                "type": "string",
+                "enum": [
+                  "off",
+                  "daily",
+                  "weekly"
+                ]
+              },
+              "allowDeleteTests": {
+                "type": "string",
+                "enum": [
+                  "require_human",
+                  "allow",
+                  "never"
+                ]
+              }
+            },
+            "required": [
+              "onEveryRun",
+              "scheduled",
+              "allowDeleteTests"
+            ]
+          }
+        },
+        "required": [
+          "framework",
+          "commands",
+          "coverageFormat",
+          "changedLines",
+          "global",
+          "requiredTypes",
+          "testPaths",
+          "exclude",
+          "audit"
+        ]
+      },
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "details": {}
+            },
+            "required": [
+              "code",
+              "message"
+            ]
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "CreateProject": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 10000
+          },
+          "repoUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri"
+          },
+          "defaultBranch": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "settings": {
+            "$ref": "#/components/schemas/ProjectSettingsInput"
+          },
+          "testPolicy": {
+            "$ref": "#/components/schemas/TestPolicyInput"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "ProjectSettingsInput": {
+        "type": "object",
+        "properties": {
+          "commands": {
+            "type": "object",
+            "properties": {
+              "install": {
+                "type": "string",
+                "minLength": 1
+              },
+              "build": {
+                "type": "string",
+                "minLength": 1
+              },
+              "lint": {
+                "type": "string",
+                "minLength": 1
+              },
+              "test": {
+                "type": "string",
+                "minLength": 1
+              },
+              "coverage": {
+                "type": "string",
+                "minLength": 1
+              },
+              "dev": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "default": {}
+          }
+        }
+      },
+      "TestPolicyInput": {
+        "type": "object",
+        "properties": {
+          "framework": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "vitest",
+              "jest"
+            ],
+            "default": "auto"
+          },
+          "commands": {
+            "type": "object",
+            "properties": {
+              "test": {
+                "type": "string",
+                "minLength": 1,
+                "default": "pnpm test"
+              },
+              "coverage": {
+                "type": "string",
+                "minLength": 1,
+                "default": "pnpm test --coverage --reporter=json"
+              }
+            },
+            "default": {}
+          },
+          "coverageFormat": {
+            "type": "string",
+            "enum": [
+              "istanbul-json",
+              "lcov",
+              "cobertura"
+            ],
+            "default": "istanbul-json"
+          },
+          "changedLines": {
+            "type": "object",
+            "properties": {
+              "minLineCoverage": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100,
+                "default": 80
+              },
+              "minBranchCoverage": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 100,
+                "default": null
+              }
+            },
+            "default": {}
+          },
+          "global": {
+            "type": "object",
+            "properties": {
+              "failIfDropsBy": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "default": 1
+              }
+            },
+            "default": {}
+          },
+          "requiredTypes": {
+            "type": "object",
+            "properties": {
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "always",
+                  "never"
+                ],
+                "default": "always"
+              },
+              "integration": {
+                "type": "string",
+                "enum": [
+                  "always",
+                  "on_api_change",
+                  "never"
+                ],
+                "default": "on_api_change"
+              },
+              "e2e": {
+                "type": "string",
+                "enum": [
+                  "always",
+                  "on_acceptance_criteria",
+                  "never"
+                ],
+                "default": "on_acceptance_criteria"
+              }
+            },
+            "default": {}
+          },
+          "testPaths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "default": [
+              "**/*.test.ts",
+              "**/*.spec.ts",
+              "tests/**"
+            ]
+          },
+          "exclude": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "default": [
+              "**/*.d.ts",
+              "src/generated/**"
+            ]
+          },
+          "audit": {
+            "type": "object",
+            "properties": {
+              "onEveryRun": {
+                "type": "boolean",
+                "default": true
+              },
+              "scheduled": {
+                "type": "string",
+                "enum": [
+                  "off",
+                  "daily",
+                  "weekly"
+                ],
+                "default": "weekly"
+              },
+              "allowDeleteTests": {
+                "type": "string",
+                "enum": [
+                  "require_human",
+                  "allow",
+                  "never"
+                ],
+                "default": "require_human"
+              }
+            },
+            "default": {}
+          }
+        }
+      },
+      "UpdateProject": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 10000
+          },
+          "repoUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri"
+          },
+          "defaultBranch": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "settings": {
+            "$ref": "#/components/schemas/ProjectSettingsInput"
+          },
+          "testPolicy": {
+            "$ref": "#/components/schemas/TestPolicyInput"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Task": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "projectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/TaskType"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/TaskPriority"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TaskStatus"
+          },
+          "acceptanceCriteria": {
+            "type": "string"
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "position": {
+            "type": "number"
+          },
+          "parentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "title",
+          "description",
+          "type",
+          "priority",
+          "status",
+          "acceptanceCriteria",
+          "labels",
+          "position",
+          "parentId",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "TaskType": {
+        "type": "string",
+        "enum": [
+          "feature",
+          "bug",
+          "refactor",
+          "test",
+          "chore"
+        ]
+      },
+      "TaskPriority": {
+        "type": "string",
+        "enum": [
+          "low",
+          "medium",
+          "high"
+        ]
+      },
+      "TaskStatus": {
+        "type": "string",
+        "enum": [
+          "draft",
+          "clarifying",
+          "ready",
+          "running",
+          "needs_human",
+          "in_review",
+          "done",
+          "failed",
+          "cancelled"
+        ]
+      },
+      "CreateTask": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 50000
+          },
+          "type": {
+            "$ref": "#/components/schemas/TaskType"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/TaskPriority"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TaskStatus"
+          },
+          "acceptanceCriteria": {
+            "type": "string",
+            "maxLength": 50000
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50
+            },
+            "maxItems": 50
+          },
+          "position": {
+            "type": "number"
+          },
+          "parentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "additionalProperties": false
+      },
+      "UpdateTask": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 50000
+          },
+          "type": {
+            "$ref": "#/components/schemas/TaskType"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/TaskPriority"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TaskStatus"
+          },
+          "acceptanceCriteria": {
+            "type": "string",
+            "maxLength": 50000
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50
+            },
+            "maxItems": 50
+          },
+          "position": {
+            "type": "number"
+          },
+          "parentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "parameters": {}
+  },
+  "paths": {
+    "/api/health": {
+      "get": {
+        "summary": "Check that the API is up",
+        "tags": [
+          "health"
+        ],
+        "responses": {
+          "200": {
+            "description": "Check that the API is up",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/projects": {
+      "get": {
+        "summary": "List projects",
+        "tags": [
+          "projects"
+        ],
+        "responses": {
+          "200": {
+            "description": "List projects",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Project"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a project",
+        "tags": [
+          "projects"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProject"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Create a project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request body is not JSON",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/projects/{id}": {
+      "get": {
+        "summary": "Get a project",
+        "tags": [
+          "projects"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Get a project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update a project",
+        "tags": [
+          "projects"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProject"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update a project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request body is not JSON",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a project and its tasks",
+        "tags": [
+          "projects"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Delete a project and its tasks"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/projects/{id}/tasks": {
+      "get": {
+        "summary": "List tasks of a project in board order",
+        "tags": [
+          "tasks"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "$ref": "#/components/schemas/TaskStatus"
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List tasks of a project in board order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Task"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a task in a project",
+        "tags": [
+          "tasks"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTask"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Create a task in a project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request body is not JSON",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tasks/{id}": {
+      "get": {
+        "summary": "Get a task",
+        "tags": [
+          "tasks"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Get a task",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update a task, including its status and position on the board",
+        "tags": [
+          "tasks"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTask"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update a task, including its status and position on the board",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request body is not JSON",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a task; its subtasks become top-level tasks",
+        "tags": [
+          "tasks"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Delete a task; its subtasks become top-level tasks"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/openapi.json": {
+      "get": {
+        "summary": "OpenAPI 3.1 document of this API",
+        "tags": [
+          "meta"
+        ],
+        "responses": {
+          "200": {
+            "description": "OpenAPI 3.1 document of this API",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "openapi": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "openapi"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "webhooks": {}
+}

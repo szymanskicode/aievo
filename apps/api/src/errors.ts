@@ -1,3 +1,6 @@
+import { InvalidReferenceError } from '@aievo/db';
+import type { z } from 'zod';
+
 /** Error payload shared by every API response: `{ error: { code, message, details? } }`. */
 export interface ApiErrorBody {
   error: {
@@ -33,6 +36,31 @@ export function notFound(path: string): ApiError {
   return new ApiError(404, 'not_found', `No route matches ${path}`);
 }
 
+export function resourceNotFound(entity: 'Project' | 'Task'): ApiError {
+  return new ApiError(404, 'not_found', `${entity} not found`);
+}
+
+/** A route with a body schema received no body or a body that is not JSON. */
+export function unsupportedMediaType(): ApiError {
+  return new ApiError(415, 'unsupported_media_type', 'Request body must be JSON');
+}
+
+export interface ValidationIssue {
+  path: (string | number)[];
+  code: string;
+  message: string;
+}
+
+/** Only the location and reason of each issue are returned, never the rejected value. */
+export function validationError(issues: readonly z.core.$ZodIssue[]): ApiError {
+  const details: ValidationIssue[] = issues.map((issue) => ({
+    path: issue.path.map((key) => (typeof key === 'symbol' ? String(key) : key)),
+    code: issue.code,
+    message: issue.message,
+  }));
+  return new ApiError(400, 'validation_error', 'Request validation failed', details);
+}
+
 /**
  * Client errors that Express middleware throws before a route is reached,
  * mostly from `express.json()`. Their own messages can quote the request body,
@@ -63,6 +91,11 @@ function readStatus(error: unknown): number | undefined {
 export function toApiError(error: unknown): ApiError {
   if (error instanceof ApiError) {
     return error;
+  }
+
+  if (error instanceof InvalidReferenceError) {
+    // The message is written by our own repository code and never quotes user input.
+    return new ApiError(400, 'invalid_reference', error.message);
   }
 
   const status = readStatus(error);

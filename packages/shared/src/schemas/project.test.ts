@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { projectSettingsSchema, testPolicySchema } from './project.js';
+import {
+  createProjectSchema,
+  projectSettingsSchema,
+  testPolicySchema,
+  updateProjectSchema,
+} from './project.js';
 
 describe('projectSettingsSchema', () => {
   it('defaults to no commands', () => {
@@ -40,5 +45,35 @@ describe('testPolicySchema', () => {
     expect(testPolicySchema.safeParse({ changedLines: { minLineCoverage: 120 } }).success).toBe(
       false,
     );
+  });
+});
+
+describe('createProjectSchema', () => {
+  it('needs only a name and applies no defaults of its own', () => {
+    expect(createProjectSchema.parse({ name: ' Demo ' })).toEqual({ name: 'Demo' });
+  });
+
+  it('rejects a blank name and unknown fields', () => {
+    expect(createProjectSchema.safeParse({ name: '' }).success).toBe(false);
+    expect(createProjectSchema.safeParse({ name: 'A', workspaceId: 'x' }).success).toBe(false);
+  });
+
+  it('accepts only http(s) repository URLs', () => {
+    expect(
+      createProjectSchema.safeParse({ name: 'A', repoUrl: 'https://github.com/a/b' }).success,
+    ).toBe(true);
+    expect(
+      createProjectSchema.safeParse({ name: 'A', repoUrl: 'file:///etc/passwd' }).success,
+    ).toBe(false);
+  });
+});
+
+describe('updateProjectSchema', () => {
+  it('leaves settings out when they are not provided', () => {
+    expect(updateProjectSchema.parse({ name: 'Renamed' })).toEqual({ name: 'Renamed' });
+  });
+
+  it('accepts an empty patch', () => {
+    expect(updateProjectSchema.parse({})).toEqual({});
   });
 });

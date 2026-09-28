@@ -1,13 +1,19 @@
+import { closeTestDb, getTestDb } from '@aievo/db/testing';
 import { healthResponseSchema } from '@aievo/shared';
 import request from 'supertest';
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 
 import { createApp } from './app.js';
 import { createLogger } from './logger.js';
 
+// Health and error handling never query the database, but the app requires a connection.
+const db = getTestDb();
+
+afterAll(closeTestDb);
+
 describe('GET /api/health', () => {
   it('returns a healthy status', async () => {
-    const response = await request(createApp()).get('/api/health');
+    const response = await request(createApp({ db })).get('/api/health');
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ status: 'ok' });
@@ -17,7 +23,7 @@ describe('GET /api/health', () => {
 
 describe('unknown routes', () => {
   it('answer 404 in the shared error format', async () => {
-    const response = await request(createApp()).get('/api/does-not-exist');
+    const response = await request(createApp({ db })).get('/api/does-not-exist');
 
     expect(response.status).toBe(404);
     expect(response.body).toMatchObject({
@@ -26,7 +32,7 @@ describe('unknown routes', () => {
   });
 
   it('do not echo the query string back to the caller', async () => {
-    const response = await request(createApp()).get('/api/does-not-exist?token=super-secret');
+    const response = await request(createApp({ db })).get('/api/does-not-exist?token=super-secret');
 
     expect(response.status).toBe(404);
     expect(JSON.stringify(response.body)).not.toContain('super-secret');
@@ -35,7 +41,7 @@ describe('unknown routes', () => {
 
 describe('malformed request bodies', () => {
   it('are rejected with 400, not reported as a server error', async () => {
-    const response = await request(createApp())
+    const response = await request(createApp({ db }))
       .post('/api/health')
       .set('Content-Type', 'application/json')
       .send('{"broken":');
@@ -47,7 +53,7 @@ describe('malformed request bodies', () => {
   });
 
   it('do not leak the rejected body in the response', async () => {
-    const response = await request(createApp())
+    const response = await request(createApp({ db }))
       .post('/api/health')
       .set('Content-Type', 'application/json')
       .send('{"apiKey": "sk-secret-value"');
@@ -66,7 +72,7 @@ describe('request logging', () => {
       },
     });
 
-    await request(createApp({ logger }))
+    await request(createApp({ db, logger }))
       .get('/api/health')
       .set('Authorization', 'Bearer sk-ant-secret-token')
       .set('Cookie', 'session=secret-session')

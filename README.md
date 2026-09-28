@@ -31,18 +31,19 @@ Nothing listens outside `127.0.0.1`: there is no authentication yet, a single lo
 
 ## Commands
 
-| Command             | What it does                                          |
-| ------------------- | ----------------------------------------------------- |
-| `pnpm dev`          | API and web in watch mode                             |
-| `pnpm build`        | Build every package and app                           |
-| `pnpm typecheck`    | TypeScript across the monorepo                        |
-| `pnpm lint`         | ESLint, zero warnings allowed                         |
-| `pnpm test`         | Vitest in every package                               |
-| `pnpm format`       | Prettier, write                                       |
-| `pnpm format:check` | Prettier, check only                                  |
-| `pnpm db:migrate`   | Drizzle migrations — not implemented yet              |
-| `pnpm db:seed`      | Default workspace and seed data — not implemented yet |
-| `pnpm test:e2e`     | Playwright — not implemented yet                      |
+| Command                 | What it does                                                                                 |
+| ----------------------- | -------------------------------------------------------------------------------------------- |
+| `pnpm dev`              | API and web in watch mode                                                                    |
+| `pnpm build`            | Build every package and app                                                                  |
+| `pnpm typecheck`        | TypeScript across the monorepo                                                               |
+| `pnpm lint`             | ESLint, zero warnings allowed                                                                |
+| `pnpm test`             | Vitest in every package                                                                      |
+| `pnpm format`           | Prettier, write                                                                              |
+| `pnpm format:check`     | Prettier, check only                                                                         |
+| `pnpm db:migrate`       | Drizzle migrations — not implemented yet                                                     |
+| `pnpm db:seed`          | Default workspace and seed data — not implemented yet                                        |
+| `pnpm test:e2e`         | Playwright — not implemented yet                                                             |
+| `pnpm openapi:generate` | Write `apps/api/openapi.json` (also served at `/api/openapi.json`); needs `pnpm build` first |
 
 ## Layout
 

@@ -19,7 +19,8 @@
     "test:e2e": "node -e \"console.log('test:e2e: not implemented yet (prompt 5)')\"",
     "db:generate": "pnpm --filter @aievo/db db:generate",
     "db:migrate": "pnpm --filter @aievo/db db:migrate",
-    "db:seed": "pnpm --filter @aievo/db db:seed"
+    "db:seed": "pnpm --filter @aievo/db db:seed",
+    "openapi:generate": "pnpm --filter @aievo/api openapi:generate"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

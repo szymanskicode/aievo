@@ -1,18 +1,28 @@
+import type { Db } from '@aievo/db';
 import express, { type ErrorRequestHandler, type Express } from 'express';
 import { pinoHttp } from 'pino-http';
 
 import { notFound, toApiError } from './errors.js';
+import { mountRoutes } from './http/route.js';
+import { defaultWorkspaceResolver } from './http/workspace.js';
+import type { WorkspaceResolver } from './http/workspace.js';
 import type { Logger } from './logger.js';
-import { createHealthRouter } from './routes/health.js';
+import { API_PREFIX, apiRoutes } from './routes.js';
 
 export interface CreateAppOptions {
+  db: Db;
   logger?: Logger;
+  /** Defaults to the seeded workspace; tests bind the app to a workspace of their own. */
+  resolveWorkspace?: WorkspaceResolver;
 }
 
-/** All API routes live under `/api`. */
-export const API_PREFIX = '/api';
+export { API_PREFIX };
 
-export function createApp({ logger }: CreateAppOptions = {}): Express {
+export function createApp({
+  db,
+  logger,
+  resolveWorkspace = defaultWorkspaceResolver,
+}: CreateAppOptions): Express {
   const app = express();
 
   app.disable('x-powered-by');
@@ -24,7 +34,7 @@ export function createApp({ logger }: CreateAppOptions = {}): Express {
   app.use(express.json());
 
   const api = express.Router();
-  api.use(createHealthRouter());
+  mountRoutes(api, apiRoutes, { db, resolveWorkspace });
   app.use(API_PREFIX, api);
 
   app.use((req, _res, next) => {

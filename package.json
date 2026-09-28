@@ -16,9 +16,10 @@
     "test": "turbo run test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "db:migrate": "node -e \"console.log('db:migrate: not implemented yet (prompt 2)')\"",
-    "db:seed": "node -e \"console.log('db:seed: not implemented yet (prompt 2)')\"",
-    "test:e2e": "node -e \"console.log('test:e2e: not implemented yet (prompt 5)')\""
+    "test:e2e": "node -e \"console.log('test:e2e: not implemented yet (prompt 5)')\"",
+    "db:generate": "pnpm --filter @aievo/db db:generate",
+    "db:migrate": "pnpm --filter @aievo/db db:migrate",
+    "db:seed": "pnpm --filter @aievo/db db:seed"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

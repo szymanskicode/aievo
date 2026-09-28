@@ -1,4 +1,11 @@
+import { existsSync } from 'node:fs';
+
 import { defineConfig } from 'drizzle-kit';
+
+const envFile = '../../.env';
+if (existsSync(envFile)) {
+  process.loadEnvFile(envFile);
+}
 
 const databaseUrl = process.env.DATABASE_URL;
 
@@ -10,6 +17,7 @@ export default defineConfig({
   dialect: 'postgresql',
   schema: './src/schema/index.ts',
   out: './drizzle',
+  casing: 'snake_case',
   dbCredentials: { url: databaseUrl },
   strict: true,
   verbose: true,

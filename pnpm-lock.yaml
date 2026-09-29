@@ -373,7 +373,7 @@ importers:
   packages/api-client:
     dependencies:
       openapi-fetch:
-        specifier: 0.17.0
+        specifier: ^0.17.0
         version: 0.17.0
     devDependencies:
       '@types/node':
@@ -383,7 +383,7 @@ importers:
         specifier: ^10.11.0
         version: 10.11.0(jiti@2.7.0)(supports-color@10.2.2)
       openapi-typescript:
-        specifier: 7.13.0
+        specifier: ^7.13.0
         version: 7.13.0(typescript@5.9.3)
       typescript:
         specifier: ~5.9.3

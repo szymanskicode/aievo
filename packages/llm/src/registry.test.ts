@@ -108,6 +108,25 @@ describe('listModels: anthropic', () => {
     ]);
   });
 
+  it('fails instead of returning a partial list when pagination never ends', async () => {
+    let requests = 0;
+    server.use(
+      http.get('https://api.anthropic.com/v1/models', () => {
+        requests += 1;
+        return HttpResponse.json({
+          data: [{ id: `claude-${requests}` }],
+          has_more: true,
+          last_id: `claude-${requests}`,
+        });
+      }),
+    );
+
+    const error = await providerError(listModels(anthropic));
+
+    expect(error.kind).toBe('bad_response');
+    expect(requests).toBe(20);
+  });
+
   it('uses a custom base URL', async () => {
     server.use(
       http.get('https://proxy.example.test/anthropic/models', () =>

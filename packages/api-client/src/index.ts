@@ -3,7 +3,7 @@ import createClient from 'openapi-fetch';
 import type { components, paths } from './generated/schema.js';
 
 export type { components, paths } from './generated/schema.js';
-export { ApiClientError, toApiClientError, unwrap } from './errors.js';
+export { ApiClientError, unwrap } from './errors.js';
 
 /** Schemas of the API by name, e.g. `Schemas['Task']`. */
 export type Schemas = components['schemas'];

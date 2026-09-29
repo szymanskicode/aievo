@@ -52,7 +52,10 @@ async function listModels(
   const models: DiscoveredModel[] = [];
   let afterId: string | undefined;
 
-  for (let page = 0; page < MAX_PAGES; page++) {
+  for (let page = 0; ; page++) {
+    // A partial list would silently drop models, so a provider that never ends is an error.
+    if (page === MAX_PAGES) throw new ProviderError('bad_response');
+
     const query = new URLSearchParams({ limit: String(PAGE_SIZE) });
     if (afterId) query.set('after_id', afterId);
 

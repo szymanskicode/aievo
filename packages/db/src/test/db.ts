@@ -27,7 +27,8 @@ export function testDatabaseUrl(): string {
 
 /**
  * Creates the test database of `url` when it does not exist yet (e.g. a data volume that
- * predates the init script). Connects to the `postgres` maintenance database to do it.
+ * predates the init script). Connects to the `postgres` maintenance database to do it, so the
+ * user needs the CREATEDB privilege (the `aievo` user of docker-compose.yml is a superuser).
  */
 export async function createDatabaseIfMissing(url: string): Promise<void> {
   const name = databaseName(assertTestDatabaseUrl(url));

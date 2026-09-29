@@ -85,3 +85,6 @@ export type { CreateTaskInput, TaskDto, TaskListQuery, UpdateTaskInput } from '.
 
 export { apiErrorSchema, idParamsSchema } from './schemas/common.js';
 export type { ApiErrorResponse, IdParams } from './schemas/common.js';
+
+export { withoutUndefined } from './utils/without-undefined.js';
+export type { WithoutUndefined } from './utils/without-undefined.js';

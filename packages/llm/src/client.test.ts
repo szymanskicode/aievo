@@ -1,7 +1,8 @@
+import { APICallError, InvalidResponseDataError, RetryError } from 'ai';
 import { HttpResponse, http } from 'msw';
 import { describe, expect, it } from 'vitest';
 
-import { createLlmClient } from './client.js';
+import { createLlmClient, toProviderError } from './client.js';
 import type { LlmEvent } from './client.js';
 import { ProviderError } from './errors.js';
 import { useMockProviders } from './test/msw.js';
@@ -112,5 +113,41 @@ describe('createLlmClient', () => {
     await expect(collect(createLlmClient(ollama).chat({ ...request, tools }))).rejects.toThrow(
       /stage 2/,
     );
+  });
+});
+
+describe('toProviderError', () => {
+  it('keeps a ProviderError', () => {
+    const error = new ProviderError('timeout');
+    expect(toProviderError(error)).toBe(error);
+  });
+
+  it('maps API call errors by status, or to a network error without one', () => {
+    const call = { url: 'https://api.example.test', requestBodyValues: {} };
+    const unauthorized = new APICallError({ ...call, message: 'x', statusCode: 401 });
+    const offline = new APICallError({ ...call, message: 'x' });
+
+    expect(toProviderError(unauthorized)).toMatchObject({ kind: 'unauthorized', status: 401 });
+    expect(toProviderError(offline)).toMatchObject({ kind: 'network' });
+    expect(
+      toProviderError(
+        new RetryError({ message: 'x', reason: 'maxRetriesExceeded', errors: [unauthorized] }),
+      ),
+    ).toMatchObject({ kind: 'unauthorized' });
+  });
+
+  it('reports other AI SDK errors as a bad response without their details', () => {
+    const error = toProviderError(new InvalidResponseDataError({ data: { secret: 'body' } }));
+
+    expect(error).toMatchObject({ kind: 'bad_response' });
+    expect((error as Error).message).not.toContain('secret');
+  });
+
+  it('rethrows errors that do not come from the AI SDK unchanged', () => {
+    const bug = new TypeError('cannot read properties of undefined');
+    const abort = new DOMException('aborted', 'AbortError');
+
+    expect(toProviderError(bug)).toBe(bug);
+    expect(toProviderError(abort)).toBe(abort);
   });
 });

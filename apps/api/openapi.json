@@ -1887,6 +1887,16 @@
               }
             }
           },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "429": {
             "description": "Error",
             "content": {

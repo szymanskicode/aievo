@@ -1,6 +1,9 @@
+import { randomBytes } from 'node:crypto';
+
 import { listModels, updateModel } from '@aievo/db';
 import { closeTestDb } from '@aievo/db/testing';
 import { providerTestResultSchema } from '@aievo/shared';
+import { createSecretBox } from '@aievo/shared/crypto';
 import { HttpResponse, http } from 'msw';
 import request from 'supertest';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
@@ -197,5 +200,32 @@ describe('POST /api/providers/:id/test', () => {
 
     expect((await request(ctx.app).post(`/api/providers/${MISSING_ID}/test`)).status).toBe(404);
     expect((await request(ctx.app).post(`/api/providers/${foreign.id}/test`)).status).toBe(404);
+  });
+
+  it('asks for the key again when the stored one cannot be decrypted', async () => {
+    const apiKey = fakeApiKey();
+    // Encrypted with another master key, as after AIEVO_MASTER_KEY was changed.
+    const provider = await insertProvider(
+      { db: ctx.db, secretBox: createSecretBox(randomBytes(32)) },
+      ctx.workspaceId,
+      { type: 'anthropic', label: 'Claude', apiKey, baseUrl: null },
+    );
+    let called = false;
+    server.use(
+      http.get('https://api.anthropic.com/v1/models', () => {
+        called = true;
+        return anthropicModels([]);
+      }),
+    );
+
+    const response = await request(ctx.app).post(`/api/providers/${provider.id}/test`);
+
+    expect(response.status).toBe(409);
+    expect(response.body.error).toMatchObject({
+      code: 'provider_key_unreadable',
+      message: expect.stringMatching(/Enter the key again/),
+    });
+    expect(JSON.stringify(response.body)).not.toContain(apiKey);
+    expect(called).toBe(false);
   });
 });

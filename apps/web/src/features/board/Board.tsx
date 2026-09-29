@@ -5,17 +5,19 @@ import {
   DndContext,
   DragOverlay,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   closestCorners,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { useMoveTask } from '@/features/tasks/queries';
 
+import { boardAnnouncements, boardInstructions } from './board-announcements';
 import { groupByStatus, moveTask, resolveDrop } from './board-model';
 import type { DropTarget } from './board-model';
 import { BoardColumn } from './BoardColumn';
@@ -43,12 +45,21 @@ export function Board({ projectId, tasks }: BoardProps) {
   const moveMutation = useMoveTask(projectId);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const sensors = useSensors(
-    // A click (e.g. on the title) is not a drag until the pointer moves a little.
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    // A click (e.g. on the title) is not a drag until the mouse moves a little.
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    // On touch screens a short press picks a card up, so a swipe still scrolls the board.
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
   const columns = groupByStatus(tasks);
+  const accessibility = useMemo(
+    () => ({
+      announcements: boardAnnouncements(tasks),
+      screenReaderInstructions: boardInstructions,
+    }),
+    [tasks],
+  );
   const dragged = tasks.find((task) => task.id === draggedId);
 
   function move(taskId: string, status: TaskStatus, index: number) {
@@ -71,6 +82,7 @@ export function Board({ projectId, tasks }: BoardProps) {
   return (
     <DndContext
       sensors={sensors}
+      accessibility={accessibility}
       collisionDetection={closestCorners}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}

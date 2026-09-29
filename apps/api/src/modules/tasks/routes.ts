@@ -1,9 +1,8 @@
 import { deleteTask, getTask, updateTask } from '@aievo/db';
-import { idParamsSchema, taskSchema, updateTaskSchema } from '@aievo/shared';
+import { idParamsSchema, taskSchema, updateTaskSchema, withoutUndefined } from '@aievo/shared';
 
 import { resourceNotFound } from '../../errors.js';
 import { defineRoute } from '../../http/route.js';
-import { withoutUndefined } from '../../http/without-undefined.js';
 import { serializeTask } from './serialize.js';
 
 const tag = 'tasks';

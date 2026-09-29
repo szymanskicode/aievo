@@ -584,7 +584,7 @@ Największe ryzyka to wyciek kluczy, niekontrolowany koszt pętli agentów i wyk
 
 **Bezpieczeństwo:**
 
-- Klucze API i tokeny Git szyfrowane w bazie, odszyfrowywane tylko w workerze na czas wywołania. Token GitHub ma dostęp do wszystkich repozytoriów, dlatego adapter Git udostępnia tylko listę dozwolonych operacji (sekcja 10), a token ma datę wygaśnięcia.
+- Klucze API i tokeny Git szyfrowane w bazie, odszyfrowywane tylko na czas pojedynczego wywołania: w workerze podczas runu, a klucze do modeli także w API przy teście połączenia (`POST /providers/:id/test`). Odszyfrowany klucz nie trafia do odpowiedzi ani logów. Token GitHub ma dostęp do wszystkich repozytoriów, dlatego adapter Git udostępnia tylko listę dozwolonych operacji (sekcja 10), a token ma datę wygaśnięcia.
 - Kod z repo wykonywany wyłącznie w sandboxie; worker nie uruchamia niczego z repo na hoście.
 - Ochrona przed prompt injection: treść plików, wyniki komend i komentarze z PR są oznaczone w prompcie jako dane, a narzędzia i tak nie pozwalają na akcje spoza uprawnień agenta.
 - Lista dozwolonych komend w projekcie; komendy spoza listy wymagają akceptacji człowieka. Chronione ścieżki projektu (np. kod uprawnień, limitów, sandboxa, autoryzacji) oznaczają PR ostrzeżeniem i wymagają osobnego zatwierdzenia.
@@ -716,6 +716,7 @@ Decyzje startowe są podjęte; zmiana którejkolwiek z nich wymaga aktualizacji 
 | Tworzenie repo | Z kreatora AIEvo, zawsze po Twoim kliknięciu, od etapu 2 | Nowy projekt bez wychodzenia z aplikacji; małe repo jako poligon dla agentów | 10, 13, 14, 17 |
 | Start nowego repo | Szablon z AIEvo (domyślnie React + Vite + TS + Vitest) albo pusty projekt | Działające dev, testy i podgląd od pierwszego taska | 4, 10 |
 | AIEvo rozwija AIEvo | Od końca etapu 3: tagowane wersje, chronione ścieżki, backup przed aktualizacją | Samorozwój bez ryzyka utraty działającego narzędzia | 15, 17, 19 |
+| Odszyfrowanie kluczy do modeli | W workerze na czas runu oraz w API na czas testu połączenia; klucz nigdy nie wraca w odpowiedzi | Test połączenia działa bez workera (etap 1) i od razu pokazuje błędny klucz | 9, 13, 15 |
 | Dostawcy modeli | Rejestr dostawców i capabilities modeli; na start Anthropic, OpenAI i zgodny z OpenAI, kolejni w etapie 5 | Wszechstronność bez zmian w agentach; model nie przejdzie, jeśli nie spełnia wymagań roli | 5, 6, 9, 17 |
 
 **Do dopowiedzenia (nie blokuje startu):**

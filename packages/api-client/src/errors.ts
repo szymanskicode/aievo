@@ -32,7 +32,7 @@ function isApiErrorBody(value: unknown): value is ApiErrorBody {
 }
 
 /** Builds the error for a non-2xx response, even when its body is not in the API format. */
-export function toApiClientError(response: Response, body: unknown): ApiClientError {
+function toApiClientError(response: Response, body: unknown): ApiClientError {
   if (isApiErrorBody(body)) {
     const { code, message, details } = body.error;
     return new ApiClientError(response.status, code, message, details);

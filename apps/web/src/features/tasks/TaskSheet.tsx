@@ -1,3 +1,4 @@
+import { withoutUndefined } from '@aievo/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { toast } from 'sonner';
@@ -12,7 +13,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { withoutUndefined } from '@/lib/without-undefined';
 
 import { taskQuery, useCreateTask, useUpdateTask } from './queries';
 import { TaskForm } from './TaskForm';

@@ -50,6 +50,14 @@ describe('ProvidersPage', () => {
     expect(await screen.findByText('No model providers yet')).toBeInTheDocument();
   });
 
+  it('does not offer the form when the API reports no provider types', async () => {
+    server.use(http.get(apiUrl('/provider-types'), () => HttpResponse.json([])));
+    renderApp('/settings/providers');
+
+    expect(await screen.findByText(/reports no supported provider types/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add provider' })).not.toBeInTheDocument();
+  });
+
   it('shows the API error when providers cannot be loaded', async () => {
     server.use(
       http.get(apiUrl('/providers'), () =>

@@ -72,7 +72,7 @@ export function TaskCard({ task, onMoveTo }: TaskCardProps) {
       {...listeners}
       aria-label={task.title}
       data-testid="task-card"
-      className={`flex cursor-grab touch-none flex-col gap-2 rounded-lg border bg-card p-3 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring ${isDragging ? 'opacity-40' : ''}`}
+      className={`flex cursor-grab touch-manipulation flex-col gap-2 rounded-lg border bg-card p-3 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring ${isDragging ? 'opacity-40' : ''}`}
     >
       <div className="flex items-start justify-between gap-2">
         <Link

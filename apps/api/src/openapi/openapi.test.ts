@@ -5,6 +5,7 @@ import request from 'supertest';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { createApp } from '../app.js';
+import { testSecretBox } from '../test/app.js';
 import { getOpenApiDocument } from '../routes.js';
 import { toOpenApiPath } from './document.js';
 import { OPENAPI_FILE, serializeOpenApiDocument } from './file.js';
@@ -71,7 +72,7 @@ describe('OpenAPI document', () => {
   });
 
   it('describes only routes that the app really serves', async () => {
-    const app = createApp({ db });
+    const app = createApp({ db, secretBox: testSecretBox() });
 
     for (const operation of documentedOperations()) {
       const [method, path] = operation.split(' ') as [string, string];
@@ -147,7 +148,9 @@ describe('OpenAPI document', () => {
   });
 
   it('is served at GET /api/openapi.json', async () => {
-    const response = await request(createApp({ db })).get('/api/openapi.json');
+    const response = await request(createApp({ db, secretBox: testSecretBox() })).get(
+      '/api/openapi.json',
+    );
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual(JSON.parse(JSON.stringify(getOpenApiDocument())));

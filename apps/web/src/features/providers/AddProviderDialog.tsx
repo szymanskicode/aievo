@@ -1,5 +1,5 @@
 import type { Schemas } from '@aievo/api-client';
-import { createProviderSchema } from '@aievo/shared';
+import { createProviderSchema, withoutUndefined } from '@aievo/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
@@ -26,7 +26,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { withoutUndefined } from '@/lib/without-undefined';
 
 import { useCreateProvider } from './queries';
 
@@ -38,8 +37,11 @@ const FIELDS = ['type', 'label', 'apiKey', 'baseUrl'] as const;
 /** An empty optional field is left out instead of being sent as "". */
 const emptyToUndefined = (value: string) => (value === '' ? undefined : value);
 
+/** At least one type: the form preselects the first. */
+export type ProviderTypes = [Schemas['ProviderTypeInfo'], ...Schemas['ProviderTypeInfo'][]];
+
 interface AddProviderFormProps {
-  types: Schemas['ProviderTypeInfo'][];
+  types: ProviderTypes;
   onDone: () => void;
 }
 
@@ -47,7 +49,7 @@ function AddProviderForm({ types, onDone }: AddProviderFormProps) {
   const createProvider = useCreateProvider();
   const form = useForm<FormInput, unknown, FormOutput>({
     resolver: zodResolver(createProviderSchema),
-    defaultValues: { type: types[0]?.type ?? 'anthropic', label: '' },
+    defaultValues: { type: types[0].type, label: '' },
   });
   const { errors, isSubmitting } = form.formState;
   const type = useWatch({ control: form.control, name: 'type' });
@@ -150,7 +152,7 @@ function AddProviderForm({ types, onDone }: AddProviderFormProps) {
 }
 
 interface AddProviderDialogProps {
-  types: Schemas['ProviderTypeInfo'][];
+  types: ProviderTypes;
   trigger: React.ReactNode;
 }
 

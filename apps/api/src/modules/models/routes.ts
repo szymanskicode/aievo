@@ -4,12 +4,12 @@ import {
   modelListQuerySchema,
   modelSchema,
   updateModelSchema,
+  withoutUndefined,
 } from '@aievo/shared';
 import { z } from 'zod';
 
 import { resourceNotFound } from '../../errors.js';
 import { defineRoute } from '../../http/route.js';
-import { withoutUndefined } from '../../http/without-undefined.js';
 import { serializeModel } from './serialize.js';
 
 const tag = 'models';

@@ -7,11 +7,8 @@ import { z } from 'zod';
 export function formIssueMessage(issue: z.core.$ZodRawIssue): string | undefined {
   switch (issue.code) {
     case 'too_small':
-      if (issue.origin === 'string') {
-        return issue.minimum === 1 ? 'Required' : `Must be at least ${issue.minimum} characters`;
-      }
-      if (issue.origin === 'array') return `Add at least ${issue.minimum}`;
-      return undefined;
+      // Every text minimum in the shared schemas is 1, i.e. "not empty".
+      return issue.origin === 'string' && issue.minimum === 1 ? 'Required' : undefined;
     case 'too_big':
       if (issue.origin === 'string') return `Must be at most ${issue.maximum} characters`;
       if (issue.origin === 'array') return `At most ${issue.maximum} allowed`;

@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
   assertTestDatabaseUrl,
@@ -38,8 +38,10 @@ describe('assertTestDatabaseUrl', () => {
   });
 });
 
+// Needs the CREATEDB privilege, like `createDatabaseIfMissing` itself.
 describe('createDatabaseIfMissing', () => {
-  const name = `aievo_tmp_${process.pid}_test`;
+  // A fixed name, dropped before and after, so an interrupted run leaves nothing behind.
+  const name = 'aievo_tmp_create_test';
   const url = new URL(testDatabaseUrl());
   url.pathname = `/${name}`;
 
@@ -50,12 +52,20 @@ describe('createDatabaseIfMissing', () => {
     return result.rows.length > 0;
   }
 
-  afterAll(async () => {
+  async function dropDatabase(): Promise<void> {
     await getTestDb().execute(sql`DROP DATABASE IF EXISTS ${sql.identifier(name)}`);
+  }
+
+  beforeAll(dropDatabase);
+
+  afterAll(async () => {
+    await dropDatabase();
     await closeTestDb();
   });
 
   it('creates the database once and leaves an existing one alone', async () => {
+    expect(await databaseExists()).toBe(false);
+
     await createDatabaseIfMissing(url.toString());
     expect(await databaseExists()).toBe(true);
 

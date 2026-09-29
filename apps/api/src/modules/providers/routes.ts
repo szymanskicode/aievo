@@ -18,11 +18,16 @@ import {
   providerTypeInfoSchema,
   updateProviderSchema,
 } from '@aievo/shared';
-import { keyHint } from '@aievo/shared/crypto';
+import { DecryptionError, keyHint } from '@aievo/shared/crypto';
 import type { SecretBox } from '@aievo/shared/crypto';
 import { z } from 'zod';
 
-import { PROVIDER_ERROR_STATUSES, missingFieldsError, resourceNotFound } from '../../errors.js';
+import {
+  PROVIDER_ERROR_STATUSES,
+  missingFieldsError,
+  resourceNotFound,
+  storedKeyUnreadable,
+} from '../../errors.js';
 import { defineRoute, definePublicRoute } from '../../http/route.js';
 import { serializeModel } from '../models/serialize.js';
 import { serializeProvider } from './serialize.js';
@@ -34,6 +39,17 @@ function sealKey(secretBox: SecretBox, apiKey: string | null) {
   return apiKey === null
     ? { encryptedKey: null, keyHint: null }
     : { encryptedKey: secretBox.encrypt(apiKey), keyHint: keyHint(apiKey) };
+}
+
+/** The plaintext key for a single provider call; a key that cannot be decrypted is a 409. */
+function openKey(secretBox: SecretBox, encryptedKey: string | null): string | null {
+  if (encryptedKey === null) return null;
+  try {
+    return secretBox.decrypt(encryptedKey);
+  } catch (error) {
+    if (error instanceof DecryptionError) throw storedKeyUnreadable();
+    throw error;
+  }
 }
 
 export const providerRoutes = [
@@ -152,7 +168,7 @@ export const providerRoutes = [
       params: idParamsSchema,
       status: 200,
       response: providerTestResultSchema,
-      errors: [404, ...PROVIDER_ERROR_STATUSES],
+      errors: [404, 409, ...PROVIDER_ERROR_STATUSES],
     },
     async ({ db, secretBox, workspaceId, params }) => {
       const provider = await getProvider(db, workspaceId, params.id);
@@ -161,7 +177,7 @@ export const providerRoutes = [
       // The plaintext key exists only for the duration of this call.
       const discovered = await discoverModels({
         type: provider.type,
-        apiKey: provider.encryptedKey === null ? null : secretBox.decrypt(provider.encryptedKey),
+        apiKey: openKey(secretBox, provider.encryptedKey),
         baseUrl: provider.baseUrl,
       });
       const models = await upsertDiscoveredModels(db, workspaceId, provider.id, discovered);

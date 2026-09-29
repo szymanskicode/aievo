@@ -4,7 +4,14 @@ import type { ReactNode } from 'react';
 
 import { Toaster } from '@/components/ui/sonner';
 
-function NavLink({ to, icon, children }: { to: string; icon: ReactNode; children: ReactNode }) {
+/** Top-level sections of the side menu; routes with parameters never belong here. */
+interface NavLinkProps {
+  to: '/projects' | '/settings';
+  icon: ReactNode;
+  children: ReactNode;
+}
+
+function NavLink({ to, icon, children }: NavLinkProps) {
   return (
     <Link
       to={to}

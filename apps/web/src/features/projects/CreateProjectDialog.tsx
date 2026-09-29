@@ -1,4 +1,4 @@
-import { createProjectSchema } from '@aievo/shared';
+import { createProjectSchema, withoutUndefined } from '@aievo/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -19,7 +19,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { withoutUndefined } from '@/lib/without-undefined';
 
 import { useCreateProject } from './queries';
 

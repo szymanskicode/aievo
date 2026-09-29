@@ -10,21 +10,32 @@ import { AddProviderDialog } from './AddProviderDialog';
 import { ProviderCard } from './ProviderCard';
 import { providersQuery, providerTypesQuery } from './queries';
 
+function isNonEmpty<T>(list: T[]): list is [T, ...T[]] {
+  return list.length > 0;
+}
+
 export function ProvidersPage() {
   const types = useQuery(providerTypesQuery());
   const providers = useQuery(providersQuery());
 
-  const addButton = types.data && (
-    <AddProviderDialog
-      types={types.data}
-      trigger={
-        <Button>
-          <PlusIcon />
-          Add provider
-        </Button>
-      }
-    />
-  );
+  // Without a type there is nothing to choose from, so the form is not offered at all.
+  const addButton =
+    types.data &&
+    (isNonEmpty(types.data) ? (
+      <AddProviderDialog
+        types={types.data}
+        trigger={
+          <Button>
+            <PlusIcon />
+            Add provider
+          </Button>
+        }
+      />
+    ) : (
+      <p className="text-sm text-muted-foreground">
+        The API reports no supported provider types, so no provider can be added.
+      </p>
+    ));
 
   return (
     <div className="flex max-w-4xl flex-col gap-6">

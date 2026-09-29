@@ -5,6 +5,7 @@ import { Controller, useForm } from 'react-hook-form';
 import type { z } from 'zod';
 
 import { applyApiErrors } from '@/api/form-errors';
+import { arrayFieldError } from '@/components/form/array-field-error';
 import { FormError, FormField } from '@/components/form/FormField';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -84,8 +85,7 @@ export function TaskForm({ task, onSubmit, onCancel }: TaskFormProps) {
     }
   });
 
-  const labelsError =
-    errors.labels?.message ?? errors.labels?.find?.((issue) => issue?.message)?.message;
+  const labelsError = arrayFieldError(errors.labels);
 
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-4">

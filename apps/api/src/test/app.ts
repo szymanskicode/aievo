@@ -22,13 +22,18 @@ export interface TestContext {
   secretBox: SecretBox;
 }
 
+/** A secret box with a master key generated for this test run only. */
+export function testSecretBox(): SecretBox {
+  return createSecretBox(randomBytes(32));
+}
+
 /** Empties the database and returns an app bound to a fresh workspace. */
 export async function setupTestApp(): Promise<TestContext> {
   const db = getTestDb();
   await resetDb(db);
   const workspaceId = await createWorkspace(db, 'Own');
   const otherWorkspaceId = await createWorkspace(db, 'Other');
-  const secretBox = createSecretBox(randomBytes(32));
+  const secretBox = testSecretBox();
   const app = createApp({ db, secretBox, resolveWorkspace: () => workspaceId });
   return { db, app, workspaceId, otherWorkspaceId, secretBox };
 }

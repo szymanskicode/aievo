@@ -3,6 +3,7 @@ import {
   createRootRouteWithContext,
   createRoute,
   createRouter,
+  lazyRouteComponent,
   redirect,
 } from '@tanstack/react-router';
 import type { RouterHistory } from '@tanstack/react-router';
@@ -11,9 +12,6 @@ import { z } from 'zod';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ErrorState } from '@/components/states/ErrorState';
 import { NotFound } from '@/components/states/NotFound';
-import { BoardPage } from '@/features/board/BoardPage';
-import { ProjectsPage } from '@/features/projects/ProjectsPage';
-import { ProvidersPage } from '@/features/providers/ProvidersPage';
 
 export interface RouterContext {
   queryClient: QueryClient;
@@ -38,7 +36,8 @@ const indexRoute = createRoute({
 const projectsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/projects',
-  component: ProjectsPage,
+  // Each page is its own chunk, loaded when its route is first opened.
+  component: lazyRouteComponent(() => import('@/features/projects/ProjectsPage'), 'ProjectsPage'),
 });
 
 /** `?task=new` opens the form for a new task, `?task=<id>` edits that task. */
@@ -49,17 +48,11 @@ const boardSearchSchema = z.object({
     .catch(undefined),
 });
 
-export type BoardSearch = z.infer<typeof boardSearchSchema>;
-
 const boardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/projects/$projectId',
   validateSearch: boardSearchSchema,
-  component: function BoardRoute() {
-    const { projectId } = boardRoute.useParams();
-    const { task } = boardRoute.useSearch();
-    return <BoardPage projectId={projectId} task={task} />;
-  },
+  component: lazyRouteComponent(() => import('@/features/board/BoardRoute'), 'BoardRoute'),
 });
 
 const settingsRoute = createRoute({
@@ -75,7 +68,10 @@ const settingsRoute = createRoute({
 const providersRoute = createRoute({
   getParentRoute: () => settingsRoute,
   path: '/providers',
-  component: ProvidersPage,
+  component: lazyRouteComponent(
+    () => import('@/features/providers/ProvidersPage'),
+    'ProvidersPage',
+  ),
 });
 
 const routeTree = rootRoute.addChildren([
@@ -90,9 +86,6 @@ export function createAppRouter(queryClient: QueryClient, history?: RouterHistor
     routeTree,
     context: { queryClient },
     ...(history ? { history } : {}),
-    defaultPreload: 'intent',
-    // Data comes from TanStack Query, which has its own cache.
-    defaultPreloadStaleTime: 0,
   });
 }
 

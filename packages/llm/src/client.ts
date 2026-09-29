@@ -1,4 +1,4 @@
-import { APICallError, RetryError, streamText } from 'ai';
+import { AISDKError, APICallError, RetryError, streamText } from 'ai';
 import type { FinishReason, ModelMessage } from 'ai';
 
 import { ProviderError, providerErrorFromStatus } from './errors.js';
@@ -59,8 +59,12 @@ const STOP_REASONS: Record<FinishReason, StopReason> = {
   other: 'other',
 };
 
-/** Reduces SDK errors to `ProviderError`, whose messages carry no request or response data. */
-function toProviderError(error: unknown): unknown {
+/**
+ * Reduces SDK errors to `ProviderError`, whose messages carry no request or response data.
+ * Anything that is not an AI SDK error (a cancellation, a bug in this package) is rethrown
+ * unchanged, so it is not disguised as a misbehaving provider.
+ */
+export function toProviderError(error: unknown): unknown {
   if (error instanceof ProviderError) return error;
   if (RetryError.isInstance(error)) return toProviderError(error.lastError);
   if (APICallError.isInstance(error)) {
@@ -68,10 +72,8 @@ function toProviderError(error: unknown): unknown {
       ? new ProviderError('network')
       : providerErrorFromStatus(error.statusCode);
   }
-  if (error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError')) {
-    return error;
-  }
-  return new ProviderError('bad_response');
+  if (AISDKError.isInstance(error)) return new ProviderError('bad_response');
+  return error;
 }
 
 export function createLlmClient(credential: ProviderCredentialInput): LlmClient {

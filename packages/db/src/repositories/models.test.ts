@@ -139,6 +139,26 @@ describe('model repository', () => {
     ).toEqual(['b']);
   });
 
+  it('lists models by provider, oldest provider first, then by model id', async () => {
+    // Created after the provider from `beforeEach`, with a label that sorts first.
+    const newer = await createProvider(db, workspaceId, {
+      type: 'openai',
+      label: 'Aaa newest',
+      encryptedKey: 'v1:x:y:z',
+      keyHint: null,
+      baseUrl: null,
+    });
+    await upsertDiscoveredModels(db, workspaceId, newer.id, [discovered('m1'), discovered('a0')]);
+    await upsertDiscoveredModels(db, workspaceId, providerId, [discovered('z9'), discovered('b2')]);
+
+    expect((await listModels(db, workspaceId)).map((m) => m.modelId)).toEqual([
+      'b2',
+      'z9',
+      'a0',
+      'm1',
+    ]);
+  });
+
   it('hides models from another workspace', async () => {
     const [created] = await upsertDiscoveredModels(db, workspaceId, providerId, [discovered('a')]);
 

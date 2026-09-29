@@ -4,6 +4,7 @@ import request from 'supertest';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { createApp } from '../app.js';
+import { testSecretBox } from '../test/app.js';
 
 const db = getTestDb();
 
@@ -17,7 +18,9 @@ describe('workspace resolution', () => {
   it('uses the seeded default workspace when none is configured', async () => {
     await seed(db);
 
-    const response = await request(createApp({ db })).get('/api/projects');
+    const response = await request(createApp({ db, secretBox: testSecretBox() })).get(
+      '/api/projects',
+    );
 
     expect(response.status).toBe(200);
     expect(response.body.map((p: { id: string }) => p.id)).toEqual([SEED_PROJECT_ID]);
@@ -26,6 +29,7 @@ describe('workspace resolution', () => {
   it('passes resolver failures to the error handler', async () => {
     const app = createApp({
       db,
+      secretBox: testSecretBox(),
       resolveWorkspace: () => Promise.reject(new Error('boom')),
     });
 
@@ -40,6 +44,7 @@ describe('workspace resolution', () => {
   it('is not needed by public routes', async () => {
     const app = createApp({
       db,
+      secretBox: testSecretBox(),
       resolveWorkspace: () => Promise.reject(new Error('boom')),
     });
 

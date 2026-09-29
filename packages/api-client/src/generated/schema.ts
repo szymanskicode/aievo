@@ -793,6 +793,15 @@ export interface paths {
                     };
                 };
                 /** @description Error */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiError"];
+                    };
+                };
+                /** @description Error */
                 429: {
                     headers: {
                         [name: string]: unknown;

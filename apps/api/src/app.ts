@@ -13,27 +13,18 @@ import { API_PREFIX, apiRoutes } from './routes.js';
 export interface CreateAppOptions {
   db: Db;
   logger?: Logger;
-  /**
-   * Required by the provider routes. Without it those routes answer 500, which keeps
-   * apps built for unrelated tests simple; `index.ts` always passes one.
-   */
-  secretBox?: SecretBox;
+  /** Encrypts and decrypts provider keys (`AIEVO_MASTER_KEY`). */
+  secretBox: SecretBox;
   /** Defaults to the seeded workspace; tests bind the app to a workspace of their own. */
   resolveWorkspace?: WorkspaceResolver;
 }
 
 export { API_PREFIX };
 
-function failingSecretBox(): never {
-  throw new Error('Secret box is not configured (AIEVO_MASTER_KEY)');
-}
-
-const missingSecretBox: SecretBox = { encrypt: failingSecretBox, decrypt: failingSecretBox };
-
 export function createApp({
   db,
   logger,
-  secretBox = missingSecretBox,
+  secretBox,
   resolveWorkspace = defaultWorkspaceResolver,
 }: CreateAppOptions): Express {
   const app = express();

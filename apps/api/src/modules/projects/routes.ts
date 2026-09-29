@@ -15,12 +15,12 @@ import {
   taskListQuerySchema,
   taskSchema,
   updateProjectSchema,
+  withoutUndefined,
 } from '@aievo/shared';
 import { z } from 'zod';
 
 import { resourceNotFound } from '../../errors.js';
 import { defineRoute } from '../../http/route.js';
-import { withoutUndefined } from '../../http/without-undefined.js';
 import { serializeTask } from '../tasks/serialize.js';
 import { serializeProject } from './serialize.js';
 

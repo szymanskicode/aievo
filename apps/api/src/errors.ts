@@ -63,6 +63,18 @@ export function validationError(issues: readonly z.core.$ZodIssue[]): ApiError {
   return new ApiError(400, 'validation_error', 'Request validation failed', details);
 }
 
+/**
+ * The stored key of a provider cannot be decrypted, typically because `AIEVO_MASTER_KEY`
+ * changed. Only a new key fixes it, so this is a conflict with the stored state, not a 500.
+ */
+export function storedKeyUnreadable(): ApiError {
+  return new ApiError(
+    409,
+    'provider_key_unreadable',
+    'The stored API key cannot be decrypted (was AIEVO_MASTER_KEY changed?). Enter the key again.',
+  );
+}
+
 /** A field that the provider type requires would be missing after the write. */
 export function missingFieldsError(fields: readonly string[], message: string): ApiError {
   const details: ValidationIssue[] = fields.map((field) => ({

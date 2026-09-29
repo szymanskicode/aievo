@@ -1,9 +1,9 @@
 import type { ModelCapabilities, ModelCapabilitiesPatch } from '@aievo/shared';
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, getTableColumns, sql } from 'drizzle-orm';
 import type { PgUpdateSetSource } from 'drizzle-orm/pg-core';
 
 import type { Db } from '../client.js';
-import { model } from '../schema/index.js';
+import { model, providerCredential } from '../schema/index.js';
 
 export type Model = typeof model.$inferSelect;
 
@@ -30,21 +30,37 @@ export interface ModelPatch {
 const inWorkspace = (workspaceId: string, id: string) =>
   and(eq(model.workspaceId, workspaceId), eq(model.id, id));
 
+/**
+ * Models grouped by provider in the order the providers are listed (oldest first, as in
+ * `listProviders`), then by model id, so the order is stable and readable.
+ */
 export async function listModels(
   db: Db,
   workspaceId: string,
   filter: ModelFilter = {},
 ): Promise<Model[]> {
   return db
-    .select()
+    .select(getTableColumns(model))
     .from(model)
+    .innerJoin(
+      providerCredential,
+      and(
+        eq(providerCredential.id, model.providerId),
+        eq(providerCredential.workspaceId, model.workspaceId),
+      ),
+    )
     .where(
       and(
         eq(model.workspaceId, workspaceId),
         filter.providerId === undefined ? undefined : eq(model.providerId, filter.providerId),
       ),
     )
-    .orderBy(asc(model.providerId), asc(model.modelId));
+    .orderBy(
+      asc(providerCredential.createdAt),
+      asc(providerCredential.label),
+      asc(providerCredential.id),
+      asc(model.modelId),
+    );
 }
 
 export async function getModel(db: Db, workspaceId: string, id: string): Promise<Model | null> {

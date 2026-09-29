@@ -11,7 +11,7 @@ import {
 import type { Project } from './repositories/projects.js';
 import { createTask, deleteTask, getTask, listTasks, updateTask } from './repositories/tasks.js';
 import type { Task } from './repositories/tasks.js';
-import { model, providerCredential } from './schema/index.js';
+import { gitCredential, model, project, providerCredential } from './schema/index.js';
 import { closeTestDb, getTestDb, resetDb } from './test/db.js';
 import { createWorkspace } from './test/fixtures.js';
 
@@ -76,6 +76,30 @@ describe('workspace isolation', () => {
         modelId: 'some-model',
         displayName: 'Some model',
         capabilities: modelCapabilitiesSchema.parse({}),
+      }),
+    ).rejects.toMatchObject({ cause: { code: '23503' } });
+  });
+
+  it('prevents a project from using another workspace Git credential', async () => {
+    const [credential] = await db
+      .insert(gitCredential)
+      .values({
+        workspaceId: ownerId,
+        label: 'GitHub',
+        encryptedToken: 'not-a-real-ciphertext',
+        githubLogin: 'octocat',
+      })
+      .returning();
+
+    await expect(
+      db.insert(project).values({
+        workspaceId: strangerId,
+        name: 'Intruder',
+        repoOwner: 'octocat',
+        repoName: 'demo',
+        gitCredentialId: credential!.id,
+        settings: ownProject.settings,
+        testPolicy: ownProject.testPolicy,
       }),
     ).rejects.toMatchObject({ cause: { code: '23503' } });
   });

@@ -1,3 +1,5 @@
+import { GitError } from '@aievo/git';
+import type { GitErrorKind } from '@aievo/git';
 import { ProviderError } from '@aievo/llm';
 import type { ProviderErrorKind } from '@aievo/llm';
 import { DecryptionError } from '@aievo/shared/crypto';
@@ -34,5 +36,39 @@ describe('toApiError: decryption errors', () => {
     expect(toApiError(new DecryptionError('Secret cannot be decrypted')).toBody()).toEqual({
       error: { code: 'internal_error', message: 'Unexpected server error' },
     });
+  });
+});
+
+describe('toApiError: Git errors', () => {
+  it.each([
+    ['unauthorized', 400, 'git_auth_failed'],
+    ['forbidden', 400, 'git_permission_denied'],
+    ['not_found', 404, 'git_not_found'],
+    ['rate_limited', 429, 'git_rate_limited'],
+    ['already_exists', 409, 'git_already_exists'],
+    ['repo_not_empty', 409, 'git_repo_not_empty'],
+    ['conflict', 409, 'git_conflict'],
+    ['validation', 400, 'git_validation_failed'],
+    ['unavailable', 502, 'git_unavailable'],
+    ['network', 502, 'git_unavailable'],
+    ['timeout', 504, 'git_timeout'],
+    ['bad_response', 502, 'git_bad_response'],
+  ] as [GitErrorKind, number, string][])('maps %s to %i %s', (kind, status, code) => {
+    const error = toApiError(new GitError(kind));
+
+    expect(error.status).toBe(status);
+    expect(error.toBody()).toEqual({ error: { code, message: new GitError(kind).message } });
+  });
+
+  it('passes on the GitHub status, reset time and required permissions', () => {
+    const error = toApiError(
+      new GitError('forbidden', { status: 403, requiredPermissions: ['contents=write'] }),
+    );
+    expect(error.details).toEqual({ githubStatus: 403, requiredPermissions: ['contents=write'] });
+
+    const limited = toApiError(
+      new GitError('rate_limited', { status: 429, resetAt: '2026-09-29T12:00:00.000Z' }),
+    );
+    expect(limited.details).toEqual({ githubStatus: 429, resetAt: '2026-09-29T12:00:00.000Z' });
   });
 });

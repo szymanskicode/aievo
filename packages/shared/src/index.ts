@@ -2,10 +2,16 @@ export { healthResponseSchema } from './schemas/health.js';
 export type { HealthResponse } from './schemas/health.js';
 
 export {
+  gitProviders,
+  gitProviderSchema,
   membershipRoles,
   membershipRoleSchema,
   providerTypes,
   providerTypeSchema,
+  runStatuses,
+  runStatusSchema,
+  stepStatuses,
+  stepStatusSchema,
   taskPriorities,
   taskPrioritySchema,
   taskStatuses,
@@ -14,8 +20,11 @@ export {
   taskTypeSchema,
 } from './schemas/enums.js';
 export type {
+  GitProvider,
   MembershipRole,
   ProviderType,
+  RunStatus,
+  StepStatus,
   TaskPriority,
   TaskStatus,
   TaskType,
@@ -82,6 +91,29 @@ export {
   updateTaskSchema,
 } from './schemas/task.js';
 export type { CreateTaskInput, TaskDto, TaskListQuery, UpdateTaskInput } from './schemas/task.js';
+
+export {
+  GITHUB_TOKEN_REQUIREMENTS,
+  createdGitCredentialSchema,
+  createGitCredentialSchema,
+  gitCredentialSchema,
+  githubCredentialQuerySchema,
+  githubOwnerSchema,
+  githubRepoSchema,
+  githubReposQuerySchema,
+} from './schemas/git.js';
+export type {
+  CreatedGitCredentialDto,
+  CreateGitCredentialInput,
+  GitCredentialDto,
+  GithubCredentialQuery,
+  GithubOwnerDto,
+  GithubRepoDto,
+  GithubReposQuery,
+} from './schemas/git.js';
+
+export { TOOL_RESULT_MAX_CHARS, truncateToolResult } from './schemas/run.js';
+export type { JsonValue } from './schemas/run.js';
 
 export { apiErrorSchema, idParamsSchema } from './schemas/common.js';
 export type { ApiErrorResponse, IdParams } from './schemas/common.js';

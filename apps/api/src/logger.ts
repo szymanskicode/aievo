@@ -4,16 +4,13 @@ import type { Env } from './env.js';
 
 /**
  * Values that must never reach the logs. pino-http logs the whole header object, so
- * redaction is configured on the logger itself rather than per call. Provider keys are
- * also covered wherever an object carrying them might be logged by mistake.
+ * redaction is configured on the logger itself rather than per call. Provider keys and Git
+ * tokens are also covered wherever an object carrying them might be logged by mistake.
  */
+const SECRET_FIELDS = ['apiKey', 'encryptedKey', 'token', 'encryptedToken'];
+
 const REDACTED_PATHS = [
-  'apiKey',
-  'encryptedKey',
-  '*.apiKey',
-  '*.encryptedKey',
-  '*.*.apiKey',
-  '*.*.encryptedKey',
+  ...SECRET_FIELDS.flatMap((field) => [field, `*.${field}`, `*.*.${field}`]),
   'req.headers.authorization',
   'req.headers.cookie',
   'req.headers["x-api-key"]',

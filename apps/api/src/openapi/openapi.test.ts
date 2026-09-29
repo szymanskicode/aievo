@@ -36,6 +36,11 @@ const EXPECTED_OPERATIONS = [
   'POST /api/providers/{id}/test',
   'GET /api/models',
   'PATCH /api/models/{id}',
+  'GET /api/git-credentials',
+  'POST /api/git-credentials',
+  'DELETE /api/git-credentials/{id}',
+  'GET /api/github/owners',
+  'GET /api/github/repos',
 ];
 
 const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete'] as const;

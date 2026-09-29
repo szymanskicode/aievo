@@ -1,4 +1,6 @@
 import { InvalidReferenceError } from '@aievo/db';
+import { GitError } from '@aievo/git';
+import type { GitErrorKind } from '@aievo/git';
 import { ProviderError } from '@aievo/llm';
 import type { ProviderErrorKind } from '@aievo/llm';
 import type { z } from 'zod';
@@ -38,7 +40,9 @@ export function notFound(path: string): ApiError {
   return new ApiError(404, 'not_found', `No route matches ${path}`);
 }
 
-export function resourceNotFound(entity: 'Project' | 'Task' | 'Provider' | 'Model'): ApiError {
+export function resourceNotFound(
+  entity: 'Project' | 'Task' | 'Provider' | 'Model' | 'Git credential',
+): ApiError {
   return new ApiError(404, 'not_found', `${entity} not found`);
 }
 
@@ -83,6 +87,55 @@ export function missingFieldsError(fields: readonly string[], message: string): 
     message,
   }));
   return new ApiError(400, 'validation_error', 'Request validation failed', details);
+}
+
+/**
+ * The stored Git token cannot be decrypted, typically because `AIEVO_MASTER_KEY` changed.
+ * Only a new token fixes it, so this is a conflict with the stored state, not a 500.
+ */
+export function storedTokenUnreadable(): ApiError {
+  return new ApiError(
+    409,
+    'git_token_unreadable',
+    'The stored GitHub token cannot be decrypted (was AIEVO_MASTER_KEY changed?). Add the token again.',
+  );
+}
+
+const GIT_ERRORS: Record<GitErrorKind, { status: number; code: string }> = {
+  unauthorized: { status: 400, code: 'git_auth_failed' },
+  forbidden: { status: 400, code: 'git_permission_denied' },
+  not_found: { status: 404, code: 'git_not_found' },
+  rate_limited: { status: 429, code: 'git_rate_limited' },
+  already_exists: { status: 409, code: 'git_already_exists' },
+  repo_not_empty: { status: 409, code: 'git_repo_not_empty' },
+  conflict: { status: 409, code: 'git_conflict' },
+  validation: { status: 400, code: 'git_validation_failed' },
+  unavailable: { status: 502, code: 'git_unavailable' },
+  network: { status: 502, code: 'git_unavailable' },
+  timeout: { status: 504, code: 'git_timeout' },
+  bad_response: { status: 502, code: 'git_bad_response' },
+};
+
+/** Status codes a route that calls GitHub can answer with. */
+export const GIT_ERROR_STATUSES = [404, 429, 502, 504];
+
+/**
+ * `GitError` messages are fixed texts written in `@aievo/git` and its details hold only
+ * the GitHub status, a reset time and permission names, so both are safe to return.
+ */
+function fromGitError(error: GitError): ApiError {
+  const { status, code } = GIT_ERRORS[error.kind];
+  const { status: githubStatus, ...rest } = error.details;
+  const details = {
+    ...(githubStatus === undefined ? {} : { githubStatus }),
+    ...rest,
+  };
+  return new ApiError(
+    status,
+    code,
+    error.message,
+    Object.keys(details).length > 0 ? details : undefined,
+  );
 }
 
 const PROVIDER_ERRORS: Record<ProviderErrorKind, { status: number; code: string }> = {
@@ -143,6 +196,10 @@ export function toApiError(error: unknown): ApiError {
 
   if (error instanceof ProviderError) {
     return fromProviderError(error);
+  }
+
+  if (error instanceof GitError) {
+    return fromGitError(error);
   }
 
   if (error instanceof InvalidReferenceError) {

@@ -1,7 +1,14 @@
 import { randomBytes } from 'node:crypto';
 
-import { createProject, createProvider, createTask } from '@aievo/db';
-import type { Db, NewProviderInput, Project, ProviderCredential, Task } from '@aievo/db';
+import { createGitCredential, createProject, createProvider, createTask } from '@aievo/db';
+import type {
+  Db,
+  GitCredential,
+  NewProviderInput,
+  Project,
+  ProviderCredential,
+  Task,
+} from '@aievo/db';
 import { createWorkspace, getTestDb, resetDb } from '@aievo/db/testing';
 import { createSecretBox, keyHint } from '@aievo/shared/crypto';
 import type { SecretBox } from '@aievo/shared/crypto';
@@ -70,4 +77,40 @@ export async function insertProvider(
     encryptedKey: apiKey === null ? null : ctx.secretBox.encrypt(apiKey),
     keyHint: apiKey === null ? null : keyHint(apiKey),
   });
+}
+
+/** A fake fine-grained GitHub token that exists only inside this test process. */
+export function fakeGitHubToken(): string {
+  return `github_pat_${randomBytes(20).toString('hex')}`;
+}
+
+/** Stores a Git credential the way the API does, with the token encrypted by `ctx.secretBox`. */
+export async function insertGitCredential(
+  ctx: Pick<TestContext, 'db' | 'secretBox'>,
+  workspaceId: string,
+  token: string,
+  label = 'GitHub',
+): Promise<GitCredential> {
+  return createGitCredential(ctx.db, workspaceId, {
+    label,
+    encryptedToken: ctx.secretBox.encrypt(token),
+    tokenHint: keyHint(token),
+    githubLogin: 'octocat',
+    expiresAt: null,
+  });
+}
+
+/**
+ * Points a project at a GitHub repository through a credential. Raw SQL until the project
+ * repository learns about repositories (stage 2, prompt 2).
+ */
+export async function linkProjectToCredential(
+  db: Db,
+  projectId: string,
+  credentialId: string,
+): Promise<void> {
+  await db.$client.query(
+    `UPDATE project SET repo_owner = 'octocat', repo_name = 'demo', git_credential_id = $1 WHERE id = $2`,
+    [credentialId, projectId],
+  );
 }

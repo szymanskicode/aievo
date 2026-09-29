@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 import { definePublicRoute } from './http/route.js';
 import type { Route } from './http/route.js';
+import { gitCredentialRoutes } from './modules/git-credentials/routes.js';
+import { githubRoutes } from './modules/github/routes.js';
 import { healthRoutes } from './modules/health/routes.js';
 import { modelRoutes } from './modules/models/routes.js';
 import { projectRoutes } from './modules/projects/routes.js';
@@ -39,5 +41,7 @@ export const apiRoutes: readonly Route[] = [
   ...taskRoutes,
   ...providerRoutes,
   ...modelRoutes,
+  ...gitCredentialRoutes,
+  ...githubRoutes,
   openApiRoute,
 ];

@@ -84,7 +84,7 @@ flowchart TB
   worker --> git
 ```
 
-Worker też zapisuje stan runów w PostgreSQL. Zdarzenia z workera (nowy krok, log, diff, koszt) trafiają przez PostgreSQL LISTEN/NOTIFY do API, a stamtąd przez SSE (Server-Sent Events) do przeglądarki. Worker działa bezpośrednio na hoście, a w kontenerach są tylko sandboxy.
+Worker też zapisuje stan runów w PostgreSQL. Zdarzenia z workera (nowy krok, log, diff, koszt) trafiają przez PostgreSQL LISTEN/NOTIFY do API, a stamtąd przez SSE (Server-Sent Events) do przeglądarki. W trybie deweloperskim worker działa bezpośrednio na hoście, a w kontenerach są tylko sandboxy. Od etapu 3 instancję można też uruchomić jedną komendą `docker compose up`, wtedy worker działa w kontenerze (sekcja 18).
 
 **Przepływ jednego taska w skrócie:**
 
@@ -140,7 +140,7 @@ aievo/
 │  └─ presets/        # agenci, skille, pipeline'y, szablony projektów (templates/)
 ├─ docker/
 │  └─ sandbox-images/ # na start: node (Vitest/Jest)
-└─ docker-compose.yml # postgres (api i worker uruchamiane lokalnie)
+└─ docker-compose.yml # postgres (api i worker lokalnie); od etapu 3 cała instancja
 ```
 
 Pakiety powstają wtedy, gdy są potrzebne w danym etapie. Etap 1 potrzebuje tylko `apps/web`, `apps/api`, `packages/shared`, `packages/db`, `packages/llm` i `packages/api-client`.
@@ -369,7 +369,7 @@ Agent typu `cli` może np. zastąpić Programistę, a Inspektor, Doktor, Tester 
 
 Na start obsługiwany jest wyłącznie GitHub przez jeden fine-grained Personal Access Token. Projekt można podłączyć do istniejącego repozytorium albo utworzyć nowe repozytorium prosto z AIEvo. GitHub App, webhooki i GitLab dochodzą później za tym samym interfejsem `GitProvider`.
 
-**Token GitHub.** Ma dostęp do wszystkich repozytoriów, bo repo, które dopiero powstanie, nie może być wcześniej wybrane w ustawieniach tokena. Uprawnienia: Administration, Contents i Pull requests do zapisu, Metadata do odczytu, z datą wygaśnięcia. Token jest szyfrowany jak klucze do modeli i zna go tylko adapter Git w workerze. Adapter ma listę dozwolonych operacji: lista repo, utworzenie repo, klonowanie, pierwszy commit nowego repo, push na gałęzie agentów, tworzenie PR, odczyt komentarzy. Usuwania repo i zmiany ustawień istniejących repo w adapterze po prostu nie ma.
+**Token GitHub.** Ma dostęp do wszystkich repozytoriów, bo repo, które dopiero powstanie, nie może być wcześniej wybrane w ustawieniach tokena. Uprawnienia: Administration, Contents i Pull requests do zapisu, Metadata do odczytu, z datą wygaśnięcia. Token jest szyfrowany jak klucze do modeli i używa go wyłącznie adapter Git: w workerze podczas runu, a w API na czas pojedynczego wywołania (sprawdzenie tokenu przy zapisie, listy właścicieli i repo, tworzenie repo z kreatora). Adapter ma listę dozwolonych operacji: lista repo, utworzenie repo, klonowanie, pierwszy commit nowego repo, push na gałęzie agentów, tworzenie PR, odczyt komentarzy. Usuwania repo i zmiany ustawień istniejących repo w adapterze po prostu nie ma.
 
 **Ścieżka A: podłącz istniejące repo**
 
@@ -570,7 +570,8 @@ Aplikacja ma trzy główne obszary: projekty z taskami, podgląd runów na żywo
 | Studio: Skille | Edytor Markdown z podglądem, informacja którzy agenci używają skilla |
 | Studio: Konteksty | Notatki, pliki z repo, szacowana liczba tokenów |
 | Studio: Pipeline'y | Edytor grafu w React Flow, walidacja (np. pętla bez limitu), symulacja przejść |
-| Ustawienia | Dostawcy modeli z rejestru, modele i ich możliwości, aliasy, cennik, budżety, członkowie, import i eksport konfiguracji |
+| Pierwsze kroki | Lista kontrolna po pierwszym uruchomieniu: dostawca modeli, token GitHub, pierwszy projekt; każdy punkt ze statusem i linkiem do właściwego ekranu, znika po skonfigurowaniu wszystkiego |
+| Ustawienia | Dostawcy modeli z rejestru, modele i ich możliwości, aliasy, cennik, token GitHub, budżety, członkowie, import i eksport konfiguracji |
 
 **Uwagi do implementacji:**
 
@@ -584,7 +585,8 @@ Największe ryzyka to wyciek kluczy, niekontrolowany koszt pętli agentów i wyk
 
 **Bezpieczeństwo:**
 
-- Klucze API i tokeny Git szyfrowane w bazie, odszyfrowywane tylko na czas pojedynczego wywołania: w workerze podczas runu, a klucze do modeli także w API przy teście połączenia (`POST /providers/:id/test`). Odszyfrowany klucz nie trafia do odpowiedzi ani logów. Token GitHub ma dostęp do wszystkich repozytoriów, dlatego adapter Git udostępnia tylko listę dozwolonych operacji (sekcja 10), a token ma datę wygaśnięcia.
+- Klucze API i tokeny Git szyfrowane w bazie, odszyfrowywane tylko na czas pojedynczego wywołania: w workerze podczas runu, klucze do modeli także w API przy teście połączenia (`POST /providers/:id/test`), a token GitHub także w API przy zapisie tokenu, listach właścicieli i repo oraz tworzeniu repo z kreatora. Odszyfrowany klucz nie trafia do odpowiedzi ani logów. Token GitHub ma dostęp do wszystkich repozytoriów, dlatego adapter Git udostępnia tylko listę dozwolonych operacji (sekcja 10), a token ma datę wygaśnięcia.
+- Klucz główny `AIEVO_MASTER_KEY` szyfruje wszystkie sekrety w bazie, więc nigdy nie jest w niej zapisany. Od etapu 3 instancja generuje go przy pierwszym starcie do pliku w katalogu danych (z komunikatem, żeby zrobić kopię); ustawiona zmienna środowiskowa ma pierwszeństwo. Utrata klucza oznacza ponowne wpisanie kluczy i tokenów w aplikacji.
 - Kod z repo wykonywany wyłącznie w sandboxie; worker nie uruchamia niczego z repo na hoście.
 - Ochrona przed prompt injection: treść plików, wyniki komend i komentarze z PR są oznaczone w prompcie jako dane, a narzędzia i tak nie pozwalają na akcje spoza uprawnień agenta.
 - Lista dozwolonych komend w projekcie; komendy spoza listy wymagają akceptacji człowieka. Chronione ścieżki projektu (np. kod uprawnień, limitów, sandboxa, autoryzacji) oznaczają PR ostrzeżeniem i wymagają osobnego zatwierdzenia.
@@ -650,6 +652,7 @@ flowchart LR
 - [ ] Interfejs AgentRuntime i implementacja native: pętla agenta z narzędziami list_files, read_file, search_code, edit_file, run_command
 - [ ] Agent Programista (prompt w pliku), commit, push, PR
 - [ ] Zapis stepów i tool_calli, prosta lista kroków w UI
+- [ ] Lista kontrolna pierwszego uruchomienia w UI (dostawca modeli, token GitHub, pierwszy projekt): cała konfiguracja potrzebna do działania odbywa się w aplikacji
 
 **Etap 3: Inspektor i Doktor**
 
@@ -658,6 +661,7 @@ flowchart LR
 - [ ] SSE i podgląd runu na żywo, diff w Monaco
 - [ ] Limity kosztów i czasu, status `needs_human`
 - [ ] Chronione ścieżki w projekcie i ostrzeżenie w PR
+- [ ] Instancja jedną komendą: `docker compose up` (PostgreSQL, API z frontendem, worker), migracje przy starcie, klucz główny generowany przy pierwszym uruchomieniu
 - [ ] Projekt AIEvo w AIEvo: tagowane wersje, skrypty aktualizacji i rollbacku z backupem bazy (sekcja 19)
 
 **Etap 4: Testy i podgląd**
@@ -712,12 +716,15 @@ Decyzje startowe są podjęte; zmiana którejkolwiek z nich wymaga aktualizacji 
 | Modele per rola | Najmocniejszy: Programista, Doktor, Inspektor; tańszy: Analityk, Planista, Tester | Słaby Inspektor przepuszcza błędy | 9 |
 | Próg pokrycia | 80% zmienionych linii, bez progu gałęzi | Realistyczny start, podnoszony z czasem | 12 |
 | Autonomia | Bramka akceptacji planu | Najtańszy moment na korektę kierunku | 6, 8 |
-| Worker | Na hoście; sandboxy w kontenerach | Prostsze debugowanie | 3, 11 |
+| Worker | Na hoście w trybie deweloperskim; od etapu 3 także w kontenerze instancji (`docker compose up`); sandboxy zawsze w osobnych kontenerach | Prostsze debugowanie przy rozwoju, jedna komenda startu dla użytkownika | 3, 4, 11 |
 | Podgląd aplikacji | Przycisk „Podgląd” dla Ciebie + narzędzia podglądu i browser_check dla agentów, od etapu 4 | Ocena frontendu przed merge; agent sprawdza swoją pracę w przeglądarce | 6, 7, 11, 13, 14, 15, 17 |
 | Tworzenie repo | Z kreatora AIEvo, zawsze po Twoim kliknięciu, od etapu 2 | Nowy projekt bez wychodzenia z aplikacji; małe repo jako poligon dla agentów | 10, 13, 14, 17 |
 | Start nowego repo | Szablon z AIEvo (domyślnie React + Vite + TS + Vitest) albo pusty projekt | Działające dev, testy i podgląd od pierwszego taska | 4, 10 |
 | AIEvo rozwija AIEvo | Od końca etapu 3: tagowane wersje, chronione ścieżki, backup przed aktualizacją | Samorozwój bez ryzyka utraty działającego narzędzia | 15, 17, 19 |
 | Odszyfrowanie kluczy do modeli | W workerze na czas runu oraz w API na czas testu połączenia; klucz nigdy nie wraca w odpowiedzi | Test połączenia działa bez workera (etap 1) i od razu pokazuje błędny klucz | 9, 13, 15 |
+| Odszyfrowanie tokenu GitHub | W workerze na czas runu oraz w API na czas pojedynczego wywołania: sprawdzenie tokenu przy zapisie, listy właścicieli i repo, tworzenie repo z kreatora; token nigdy nie wraca w odpowiedzi ani w logach | Kreator projektu działa bez workera, a błędny token widać od razu przy zapisie; decyzja z etapu 2 | 10, 13, 15 |
+| Konfiguracja przez aplikację | Klucze do modeli, token GitHub, projekty i limity ustawia się w UI; zmienne środowiskowe tylko dla tego, co potrzebne przed startem (adres bazy, porty, opcjonalnie klucz główny); lista kontrolna pierwszego uruchomienia od etapu 2 | Każdy może pobrać repo i uruchomić instancję bez znajomości terminala i plików konfiguracyjnych | 1, 13, 14, 17 |
+| Uruchomienie instancji | Od etapu 3 jedna komenda `docker compose up`: PostgreSQL, API serwujące frontend, worker; migracje przy starcie; klucz główny generowany przy pierwszym uruchomieniu do katalogu danych; `pnpm dev` zostaje trybem deweloperskim | Aplikacja self-hosted gotowa do pobrania; etap 2 zostaje przy prostszym debugowaniu na hoście | 1, 3, 4, 15, 17, 19 |
 | Dostawcy modeli | Rejestr dostawców i capabilities modeli; na start Anthropic, OpenAI i zgodny z OpenAI, kolejni w etapie 5 | Wszechstronność bez zmian w agentach; model nie przejdzie, jeśli nie spełnia wymagań roli | 5, 6, 9, 17 |
 
 **Do dopowiedzenia (nie blokuje startu):**
@@ -736,6 +743,8 @@ Decyzje startowe są podjęte; zmiana którejkolwiek z nich wymaga aktualizacji 
 | Testy pisane pod kod | Zielone testy, które niczego nie sprawdzają | Rozdzielone uprawnienia, Inspektor sprawdza testy, testy mutacyjne |
 | Bezpieczeństwo sandboxa | Wykonanie złośliwego kodu z repo | Kontener bez roota, ograniczona sieć, limity zasobów |
 | Zmiany w API dostawców | Niedziałające adaptery | Jedna warstwa `LlmClient`, testy kontraktowe adapterów |
+| Worker w kontenerze z dostępem do Dockera hosta | Dostęp do socketu Dockera to w praktyce uprawnienia roota na hoście | Socket tylko w kontenerze workera, nigdy w sandboxach; worker nie wykonuje kodu z repo; alternatywa: worker jako usługa na hoście |
+| Utrata pliku z kluczem głównym | Zapisane klucze i tokeny stają się nieczytelne | Komunikat o kopii przy pierwszym starcie; aplikacja wykrywa nieczytelne sekrety i prosi o ich ponowne wpisanie (już działa dla kluczy i tokenu) |
 | Za duży zakres | Projekt nigdy nie dochodzi do używalnej wersji | Etapy z roadmapy, używanie platformy na własnym repo od etapu 2 |
 
 ## 19. AIEvo rozwija AIEvo

@@ -35,3 +35,25 @@ export const taskStatuses = [
 ] as const;
 export const taskStatusSchema = z.enum(taskStatuses).meta({ id: 'TaskStatus' });
 export type TaskStatus = z.infer<typeof taskStatusSchema>;
+
+/** Git hosting providers; only GitHub for now (docs/architecture.md, section 10). */
+export const gitProviders = ['github'] as const;
+export const gitProviderSchema = z.enum(gitProviders).meta({ id: 'GitProvider' });
+export type GitProvider = z.infer<typeof gitProviderSchema>;
+
+/** Lifecycle of one run of a task, in the order a successful run goes through it. */
+export const runStatuses = [
+  'queued',
+  'preparing',
+  'running',
+  'committing',
+  'succeeded',
+  'failed',
+  'cancelled',
+] as const;
+export const runStatusSchema = z.enum(runStatuses).meta({ id: 'RunStatus' });
+export type RunStatus = z.infer<typeof runStatusSchema>;
+
+export const stepStatuses = ['queued', 'running', 'succeeded', 'failed', 'cancelled'] as const;
+export const stepStatusSchema = z.enum(stepStatuses).meta({ id: 'StepStatus' });
+export type StepStatus = z.infer<typeof stepStatusSchema>;

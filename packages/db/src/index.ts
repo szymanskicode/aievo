@@ -3,7 +3,7 @@ export { createDb } from './client.js';
 export type { Db } from './client.js';
 export { runMigrations } from './migrate.js';
 export { DEFAULT_WORKSPACE_ID, LOCAL_USER_ID, SEED_PROJECT_ID, seed } from './seed.js';
-export { InvalidReferenceError } from './errors.js';
+export { InvalidReferenceError, RowInUseError } from './errors.js';
 export {
   createProject,
   deleteProject,
@@ -38,3 +38,10 @@ export type {
   ModelFilter,
   ModelPatch,
 } from './repositories/models.js';
+export {
+  createGitCredential,
+  deleteGitCredential,
+  getGitCredential,
+  listGitCredentials,
+} from './repositories/git-credentials.js';
+export type { GitCredential, NewGitCredentialInput } from './repositories/git-credentials.js';

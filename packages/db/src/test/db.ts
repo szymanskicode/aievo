@@ -6,16 +6,42 @@ import type { Db } from '../client.js';
 // Credentials from docker-compose.yml; not a secret.
 const DEFAULT_TEST_URL = 'postgresql://aievo:aievo@127.0.0.1:5432/aievo_test';
 
-/** The suite wipes the database, so refuse anything that is not clearly a test database. */
-export function testDatabaseUrl(): string {
-  const url = process.env.DATABASE_URL_TEST ?? DEFAULT_TEST_URL;
-  const name = new URL(url).pathname.replace(/^\//, '');
+function databaseName(url: string): string {
+  return decodeURIComponent(new URL(url).pathname.replace(/^\//, ''));
+}
+
+/** Tests wipe their database, so refuse anything that is not clearly a test database. */
+export function assertTestDatabaseUrl(url: string): string {
+  const name = databaseName(url);
   if (!name.endsWith('_test')) {
     throw new Error(
       `Refusing to run tests against "${name}": the database name must end in _test.`,
     );
   }
   return url;
+}
+
+export function testDatabaseUrl(): string {
+  return assertTestDatabaseUrl(process.env.DATABASE_URL_TEST ?? DEFAULT_TEST_URL);
+}
+
+/**
+ * Creates the test database of `url` when it does not exist yet (e.g. a data volume that
+ * predates the init script). Connects to the `postgres` maintenance database to do it.
+ */
+export async function createDatabaseIfMissing(url: string): Promise<void> {
+  const name = databaseName(assertTestDatabaseUrl(url));
+  const adminUrl = new URL(url);
+  adminUrl.pathname = '/postgres';
+  const { db, close } = createDb(adminUrl.toString());
+  try {
+    const existing = await db.execute(sql`SELECT 1 FROM pg_database WHERE datname = ${name}`);
+    if (existing.rows.length === 0) {
+      await db.execute(sql`CREATE DATABASE ${sql.identifier(name)}`);
+    }
+  } finally {
+    await close();
+  }
 }
 
 export const CONNECTION_HELP =

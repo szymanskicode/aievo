@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url';
 
+import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv } from 'vite';
 
@@ -8,11 +9,15 @@ const repoRoot = fileURLToPath(new URL('../../', import.meta.url));
 export default defineConfig(({ mode }) => {
   // API_PORT lives in the repo-root .env, which Vite does not read on its own.
   // Without this the API could move while the proxy kept pointing at 3001.
+  // Variables already set in the environment win, so E2E tests can point at their own API.
   const env = loadEnv(mode, repoRoot, '');
   const apiPort = env.API_PORT ?? '3001';
 
   return {
-    plugins: [react()],
+    plugins: [react(), tailwindcss()],
+    resolve: {
+      alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+    },
     server: {
       host: '127.0.0.1',
       port: 5173,

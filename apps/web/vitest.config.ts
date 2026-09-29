@@ -1,9 +1,14 @@
+import { fileURLToPath } from 'node:url';
+
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  resolve: {
+    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+  },
   test: {
     include: ['src/**/*.test.{ts,tsx}'],
-    // Component tests arrive together with the UI (Testing Library, later step).
-    passWithNoTests: true,
+    environment: 'jsdom',
+    setupFiles: ['src/test/setup.ts'],
   },
 });

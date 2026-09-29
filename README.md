@@ -21,6 +21,8 @@ Architecture: [`docs/architecture.md`](docs/architecture.md). Getting started: [
 pnpm install            # install dependencies
 cp .env.example .env    # then fill in AIEVO_MASTER_KEY (the file says how)
 docker compose up -d    # PostgreSQL on 127.0.0.1:5432
+pnpm db:migrate         # create the schema
+pnpm db:seed            # default workspace and a sample project
 pnpm dev                # API on 127.0.0.1:3001, web on 127.0.0.1:5173
 ```
 
@@ -31,28 +33,30 @@ Nothing listens outside `127.0.0.1`: there is no authentication yet, a single lo
 
 ## Commands
 
-| Command                 | What it does                                                                                 |
-| ----------------------- | -------------------------------------------------------------------------------------------- |
-| `pnpm dev`              | API and web in watch mode                                                                    |
-| `pnpm build`            | Build every package and app                                                                  |
-| `pnpm typecheck`        | TypeScript across the monorepo                                                               |
-| `pnpm lint`             | ESLint, zero warnings allowed                                                                |
-| `pnpm test`             | Vitest in every package                                                                      |
-| `pnpm format`           | Prettier, write                                                                              |
-| `pnpm format:check`     | Prettier, check only                                                                         |
-| `pnpm db:migrate`       | Drizzle migrations — not implemented yet                                                     |
-| `pnpm db:seed`          | Default workspace and seed data — not implemented yet                                        |
-| `pnpm test:e2e`         | Playwright — not implemented yet                                                             |
-| `pnpm openapi:generate` | Write `apps/api/openapi.json` (also served at `/api/openapi.json`); needs `pnpm build` first |
+| Command                    | What it does                                                                                                                                                  |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm dev`                 | API and web in watch mode                                                                                                                                     |
+| `pnpm build`               | Build every package and app                                                                                                                                   |
+| `pnpm typecheck`           | TypeScript across the monorepo                                                                                                                                |
+| `pnpm lint`                | ESLint, zero warnings allowed                                                                                                                                 |
+| `pnpm test`                | Vitest in every package                                                                                                                                       |
+| `pnpm format`              | Prettier, write                                                                                                                                               |
+| `pnpm format:check`        | Prettier, check only                                                                                                                                          |
+| `pnpm db:migrate`          | Drizzle migrations                                                                                                                                            |
+| `pnpm db:seed`             | Default workspace and seed data                                                                                                                               |
+| `pnpm test:e2e`            | Playwright against the real API and the `aievo_e2e_test` database (wiped on every run); first run `pnpm --filter @aievo/web exec playwright install chromium` |
+| `pnpm openapi:generate`    | Write `apps/api/openapi.json` (also served at `/api/openapi.json`); needs `pnpm build` first                                                                  |
+| `pnpm api-client:generate` | Regenerate the typed client in `packages/api-client` from `apps/api/openapi.json`; `pnpm build` and `pnpm typecheck` fail while it is stale                   |
 
 ## Layout
 
 ```
-apps/api        Express 5: REST API under /api, pino logs
-apps/web        React + Vite single-page app
-packages/shared Zod schemas and types shared by API and web
-packages/db     Drizzle schema and migrations
-docker/         PostgreSQL init scripts
+apps/api            Express 5: REST API under /api, pino logs
+apps/web            React + Vite SPA (TanStack Router/Query, Tailwind, shadcn/ui); E2E in e2e/
+packages/shared     Zod schemas and types shared by API and web
+packages/api-client Typed REST client generated from the OpenAPI document
+packages/db         Drizzle schema and migrations
+docker/             PostgreSQL init scripts
 ```
 
 ## Notes

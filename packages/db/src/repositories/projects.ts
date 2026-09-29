@@ -3,20 +3,35 @@ import type { ProjectSettingsInput, TestPolicyInput } from '@aievo/shared';
 import { and, asc, eq } from 'drizzle-orm';
 
 import type { Db } from '../client.js';
+import {
+  DuplicateRowError,
+  InvalidReferenceError,
+  isForeignKeyViolation,
+  isUniqueViolation,
+} from '../errors.js';
 import { project } from '../schema/index.js';
 
 export type Project = typeof project.$inferSelect;
+
+/** The GitHub repository a project works on and the credential that reaches it. */
+export interface ProjectRepoInput {
+  owner: string;
+  name: string;
+  gitCredentialId: string;
+}
 
 export interface NewProjectInput {
   name: string;
   description?: string;
   repoUrl?: string | null;
   defaultBranch?: string;
+  repo?: ProjectRepoInput;
   settings?: ProjectSettingsInput;
   testPolicy?: TestPolicyInput;
 }
 
-export type ProjectPatch = Partial<NewProjectInput>;
+/** The linked repository is set once, when the project is created. */
+export type ProjectPatch = Partial<Omit<NewProjectInput, 'repo'>>;
 
 const inWorkspace = (workspaceId: string, id: string) =>
   and(eq(project.workspaceId, workspaceId), eq(project.id, id));
@@ -34,23 +49,44 @@ export async function getProject(db: Db, workspaceId: string, id: string): Promi
   return row ?? null;
 }
 
+/**
+ * `InvalidReferenceError` when `repo.gitCredentialId` is not a credential of the workspace,
+ * `DuplicateRowError` when another project of the workspace already uses the repository.
+ */
 export async function createProject(
   db: Db,
   workspaceId: string,
   input: NewProjectInput,
 ): Promise<Project> {
-  const [row] = await db
-    .insert(project)
-    .values({
-      workspaceId,
-      name: input.name,
-      description: input.description ?? '',
-      repoUrl: input.repoUrl ?? null,
-      defaultBranch: input.defaultBranch ?? 'main',
-      settings: projectSettingsSchema.parse(input.settings ?? {}),
-      testPolicy: testPolicySchema.parse(input.testPolicy ?? {}),
-    })
-    .returning();
+  const values = {
+    workspaceId,
+    name: input.name,
+    description: input.description ?? '',
+    repoUrl: input.repoUrl ?? null,
+    defaultBranch: input.defaultBranch ?? 'main',
+    repoOwner: input.repo?.owner ?? null,
+    repoName: input.repo?.name ?? null,
+    gitCredentialId: input.repo?.gitCredentialId ?? null,
+    settings: projectSettingsSchema.parse(input.settings ?? {}),
+    testPolicy: testPolicySchema.parse(input.testPolicy ?? {}),
+  };
+
+  let row: Project | undefined;
+  try {
+    [row] = await db.insert(project).values(values).returning();
+  } catch (error) {
+    if (isUniqueViolation(error, 'project_workspace_repo_unique')) {
+      throw new DuplicateRowError('Another project already uses this repository', {
+        cause: error,
+      });
+    }
+    if (isForeignKeyViolation(error)) {
+      throw new InvalidReferenceError('Git credential does not exist in this workspace', {
+        cause: error,
+      });
+    }
+    throw error;
+  }
   if (!row) throw new Error('Project insert returned no row');
   return row;
 }

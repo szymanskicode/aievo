@@ -1,6 +1,6 @@
 import { getProject } from '@aievo/db';
 import { closeTestDb } from '@aievo/db/testing';
-import { projectSchema, testPolicySchema } from '@aievo/shared';
+import { projectSchema } from '@aievo/shared';
 import request from 'supertest';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
@@ -37,31 +37,19 @@ describe('GET /api/projects', () => {
   });
 });
 
+// Creating projects from GitHub repositories is covered in create-project.test.ts.
 describe('POST /api/projects', () => {
-  it('creates a project with defaults', async () => {
-    const response = await request(ctx.app).post('/api/projects').send({ name: '  Demo  ' });
+  const existing = { mode: 'existing', owner: 'octocat', repo: 'hello', defaultBranch: 'main' };
 
-    expect(response.status).toBe(201);
-    expect(response.body).toMatchObject({
-      name: 'Demo',
-      description: '',
-      repoUrl: null,
-      defaultBranch: 'main',
-      settings: { commands: {} },
-      testPolicy: testPolicySchema.parse({}),
-    });
-    expect(await getProject(ctx.db, ctx.workspaceId, response.body.id)).not.toBeNull();
-  });
-
-  it('rejects a missing name with 400 in the error format', async () => {
-    const response = await request(ctx.app).post('/api/projects').send({});
+  it('rejects a project without a repository with 400 in the error format', async () => {
+    const response = await request(ctx.app).post('/api/projects').send({ name: 'Demo' });
 
     expect(response.status).toBe(400);
     expect(response.body).toEqual({
       error: {
         code: 'validation_error',
         message: 'Request validation failed',
-        details: [expect.objectContaining({ path: ['body', 'name'] })],
+        details: [expect.objectContaining({ path: ['body', 'mode'] })],
       },
     });
   });
@@ -69,7 +57,7 @@ describe('POST /api/projects', () => {
   it('rejects unknown fields instead of ignoring them', async () => {
     const response = await request(ctx.app)
       .post('/api/projects')
-      .send({ name: 'Demo', workspaceId: ctx.otherWorkspaceId });
+      .send({ ...existing, workspaceId: ctx.otherWorkspaceId });
 
     expect(response.status).toBe(400);
     expect(response.body.error.code).toBe('validation_error');
@@ -96,10 +84,10 @@ describe('POST /api/projects', () => {
   it('does not echo rejected values back', async () => {
     const response = await request(ctx.app)
       .post('/api/projects')
-      .send({ name: 'Demo', repoUrl: 'ftp://secret-host.example' });
+      .send({ ...existing, repo: 'secret repo name' });
 
     expect(response.status).toBe(400);
-    expect(JSON.stringify(response.body)).not.toContain('secret-host');
+    expect(JSON.stringify(response.body)).not.toContain('secret repo');
   });
 });
 
@@ -142,14 +130,24 @@ describe('PATCH /api/projects/:id', () => {
 
     const response = await request(ctx.app)
       .patch(`/api/projects/${project.id}`)
-      .send({ name: 'Renamed', repoUrl: 'https://github.com/acme/demo' });
+      .send({ name: 'Renamed', defaultBranch: 'develop' });
 
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
       name: 'Renamed',
-      repoUrl: 'https://github.com/acme/demo',
+      defaultBranch: 'develop',
       settings: { commands: { test: 'pnpm test' } },
     });
+  });
+
+  it('does not change the linked repository', async () => {
+    const project = await insertProject(ctx.db, ctx.workspaceId);
+
+    const response = await request(ctx.app)
+      .patch(`/api/projects/${project.id}`)
+      .send({ repoUrl: 'https://github.com/acme/demo' });
+
+    expect(response.status).toBe(400);
   });
 
   it('answers 404 for a missing project', async () => {

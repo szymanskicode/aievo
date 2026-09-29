@@ -51,6 +51,7 @@ describe('operation whitelist', () => {
     'createInitialCommit',
     'createPullRequest',
     'createRepo',
+    'getRepo',
     'listOwners',
     'listPullRequestComments',
     'listRepos',
@@ -202,6 +203,26 @@ describe('listRepos', () => {
       htmlUrl: 'https://github.com/octocat/alpha',
     });
     expect(seen).toEqual(['owner', 'owner']);
+  });
+
+  it('reads one repository by owner and name', async () => {
+    server.use(http.get(`${API}/repos/acme/site`, () => HttpResponse.json(repo('acme', 'site'))));
+
+    const found = await createGitHubProvider(fineGrainedToken).getRepo('acme', 'site');
+
+    expect(found).toMatchObject({ owner: 'acme', name: 'site', fullName: 'acme/site' });
+  });
+
+  it('reports a repository the token cannot see as not found', async () => {
+    server.use(
+      http.get(`${API}/repos/acme/secret`, () =>
+        HttpResponse.json({ message: 'Not Found' }, { status: 404 }),
+      ),
+    );
+
+    const error = await gitError(createGitHubProvider(fineGrainedToken).getRepo('acme', 'secret'));
+
+    expect(error.kind).toBe('not_found');
   });
 
   it('lists the repositories of an organization', async () => {

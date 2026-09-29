@@ -1,6 +1,15 @@
 import type { ProjectSettings, TestPolicy } from '@aievo/shared';
 import { sql } from 'drizzle-orm';
-import { check, foreignKey, index, jsonb, pgTable, text, uuid } from 'drizzle-orm/pg-core';
+import {
+  check,
+  foreignKey,
+  index,
+  jsonb,
+  pgTable,
+  text,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core';
 
 import { createdAt, id, updatedAt } from './columns.js';
 import { gitCredential } from './git.js';
@@ -35,5 +44,12 @@ export const project = pgTable(
       foreignColumns: [gitCredential.id, gitCredential.workspaceId],
     }).onDelete('restrict'),
     check('project_repo_owner_name_check', sql`(${t.repoOwner} IS NULL) = (${t.repoName} IS NULL)`),
+    // One project per repository in a workspace; GitHub names are case-insensitive.
+    // Projects without a repository have NULLs here, which never collide.
+    uniqueIndex('project_workspace_repo_unique').on(
+      t.workspaceId,
+      sql`lower(${t.repoOwner})`,
+      sql`lower(${t.repoName})`,
+    ),
   ],
 );

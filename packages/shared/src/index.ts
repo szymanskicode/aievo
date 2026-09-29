@@ -68,14 +68,23 @@ export type {
 } from './schemas/provider.js';
 
 export {
+  DEFAULT_NPM_COMMANDS,
+  createExistingProjectSchema,
+  createNewProjectSchema,
   createProjectSchema,
+  previewSchema,
+  projectCommandsSchema,
   projectSchema,
   projectSettingsSchema,
   testPolicySchema,
   updateProjectSchema,
 } from './schemas/project.js';
 export type {
+  CreateExistingProjectInput,
+  CreateNewProjectInput,
   CreateProjectInput,
+  Preview,
+  ProjectCommands,
   ProjectDto,
   ProjectSettings,
   ProjectSettingsInput,
@@ -98,7 +107,9 @@ export {
   createGitCredentialSchema,
   gitCredentialSchema,
   githubCredentialQuerySchema,
+  githubLoginSchema,
   githubOwnerSchema,
+  githubRepoNameSchema,
   githubRepoSchema,
   githubReposQuerySchema,
 } from './schemas/git.js';
@@ -111,6 +122,12 @@ export type {
   GithubRepoDto,
   GithubReposQuery,
 } from './schemas/git.js';
+
+export { templateManifestSchema, templateSchema } from './schemas/template.js';
+export type { TemplateDto, TemplateManifest, TemplateManifestInput } from './schemas/template.js';
+
+export { setupStatusSchema } from './schemas/setup.js';
+export type { SetupStatus } from './schemas/setup.js';
 
 export { TOOL_RESULT_MAX_CHARS, truncateToolResult } from './schemas/run.js';
 export type { JsonValue } from './schemas/run.js';

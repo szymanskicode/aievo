@@ -1,25 +1,24 @@
 import { useQuery } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import { PlusIcon } from 'lucide-react';
 
 import { EmptyState } from '@/components/states/EmptyState';
 import { ErrorState } from '@/components/states/ErrorState';
 import { LoadingState } from '@/components/states/LoadingState';
 import { Button } from '@/components/ui/button';
+import { GettingStartedCard } from '@/features/setup/GettingStartedCard';
 
-import { CreateProjectDialog } from './CreateProjectDialog';
 import { ProjectCard } from './ProjectCard';
 import { projectsQuery } from './queries';
 
 function NewProjectButton() {
   return (
-    <CreateProjectDialog
-      trigger={
-        <Button>
-          <PlusIcon />
-          New project
-        </Button>
-      }
-    />
+    <Button asChild>
+      <Link to="/projects/new">
+        <PlusIcon />
+        New project
+      </Link>
+    </Button>
   );
 }
 
@@ -33,6 +32,8 @@ export function ProjectsPage() {
         {projects.data && projects.data.length > 0 && <NewProjectButton />}
       </header>
 
+      <GettingStartedCard />
+
       {projects.isPending ? (
         <LoadingState label="Loading projects" />
       ) : projects.isError ? (
@@ -44,7 +45,7 @@ export function ProjectsPage() {
       ) : projects.data.length === 0 ? (
         <EmptyState
           title="No projects yet"
-          description="Create a project to start adding tasks."
+          description="Connect a GitHub repository or create a new one to start adding tasks."
           action={<NewProjectButton />}
         />
       ) : (

@@ -1,5 +1,4 @@
 import {
-  createProject,
   createTask,
   deleteProject,
   getProject,
@@ -19,9 +18,10 @@ import {
 } from '@aievo/shared';
 import { z } from 'zod';
 
-import { resourceNotFound } from '../../errors.js';
+import { GIT_ERROR_STATUSES, resourceNotFound } from '../../errors.js';
 import { defineRoute } from '../../http/route.js';
 import { serializeTask } from '../tasks/serialize.js';
+import { createProjectWithRepo } from './create-project.js';
 import { serializeProject } from './serialize.js';
 
 const tag = 'projects';
@@ -43,14 +43,16 @@ export const projectRoutes = [
     {
       method: 'post',
       path: '/projects',
-      summary: 'Create a project',
+      summary: 'Create a project from an existing GitHub repository or a new one from a template',
       tag,
       body: createProjectSchema,
       status: 201,
       response: projectSchema,
+      // 409: no token, a token that cannot be decrypted or a repository name already taken;
+      // `project_setup_failed` keeps the status of the step that failed.
+      errors: [409, 500, ...GIT_ERROR_STATUSES],
     },
-    async ({ db, workspaceId, body }) =>
-      serializeProject(await createProject(db, workspaceId, withoutUndefined(body))),
+    async (ctx) => serializeProject(await createProjectWithRepo(ctx, ctx.workspaceId, ctx.body)),
   ),
 
   defineRoute(

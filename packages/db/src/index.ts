@@ -3,7 +3,7 @@ export { createDb } from './client.js';
 export type { Db } from './client.js';
 export { runMigrations } from './migrate.js';
 export { DEFAULT_WORKSPACE_ID, LOCAL_USER_ID, SEED_PROJECT_ID, seed } from './seed.js';
-export { InvalidReferenceError, RowInUseError } from './errors.js';
+export { DuplicateRowError, InvalidReferenceError, RowInUseError } from './errors.js';
 export {
   createProject,
   deleteProject,
@@ -11,7 +11,14 @@ export {
   listProjects,
   updateProject,
 } from './repositories/projects.js';
-export type { NewProjectInput, Project, ProjectPatch } from './repositories/projects.js';
+export type {
+  NewProjectInput,
+  Project,
+  ProjectPatch,
+  ProjectRepoInput,
+} from './repositories/projects.js';
+export { getSetupStatus } from './repositories/setup.js';
+export type { SetupStatus } from './repositories/setup.js';
 export { createTask, deleteTask, getTask, listTasks, updateTask } from './repositories/tasks.js';
 export type { NewTaskInput, Task, TaskFilter, TaskPatch } from './repositories/tasks.js';
 export {

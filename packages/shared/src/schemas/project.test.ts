@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  DEFAULT_NPM_COMMANDS,
   createProjectSchema,
+  previewSchema,
   projectSettingsSchema,
   testPolicySchema,
   updateProjectSchema,
@@ -49,28 +51,86 @@ describe('testPolicySchema', () => {
 });
 
 describe('createProjectSchema', () => {
-  it('needs only a name and applies no defaults of its own', () => {
-    expect(createProjectSchema.parse({ name: ' Demo ' })).toEqual({ name: 'Demo' });
+  const existing = {
+    mode: 'existing',
+    owner: 'octocat',
+    repo: 'hello-world',
+    defaultBranch: 'main',
+  } as const;
+
+  it('accepts an existing repository without a name or commands', () => {
+    expect(createProjectSchema.parse(existing)).toEqual(existing);
   });
 
-  it('rejects a blank name and unknown fields', () => {
-    expect(createProjectSchema.safeParse({ name: '' }).success).toBe(false);
-    expect(createProjectSchema.safeParse({ name: 'A', workspaceId: 'x' }).success).toBe(false);
+  it('accepts a new repository and makes it private by default', () => {
+    expect(
+      createProjectSchema.parse({
+        mode: 'new',
+        name: 'aievo-playground',
+        owner: 'octocat',
+        template: 'react-vite-ts',
+      }),
+    ).toEqual({
+      mode: 'new',
+      name: 'aievo-playground',
+      owner: 'octocat',
+      template: 'react-vite-ts',
+      private: true,
+    });
   });
 
-  it('accepts only http(s) repository URLs', () => {
+  it('rejects a body without a known mode', () => {
+    expect(createProjectSchema.safeParse({ name: 'Demo' }).success).toBe(false);
+    expect(createProjectSchema.safeParse({ ...existing, mode: 'none' }).success).toBe(false);
+  });
+
+  it('rejects unknown fields such as workspaceId', () => {
+    expect(createProjectSchema.safeParse({ ...existing, workspaceId: 'x' }).success).toBe(false);
+  });
+
+  it('rejects repository names and branches GitHub would refuse', () => {
+    expect(createProjectSchema.safeParse({ ...existing, repo: 'has space' }).success).toBe(false);
+    expect(createProjectSchema.safeParse({ ...existing, repo: '..' }).success).toBe(false);
+    expect(createProjectSchema.safeParse({ ...existing, owner: '-bad' }).success).toBe(false);
+    expect(createProjectSchema.safeParse({ ...existing, defaultBranch: 'a b' }).success).toBe(
+      false,
+    );
     expect(
-      createProjectSchema.safeParse({ name: 'A', repoUrl: 'https://github.com/a/b' }).success,
-    ).toBe(true);
-    expect(
-      createProjectSchema.safeParse({ name: 'A', repoUrl: 'file:///etc/passwd' }).success,
+      createProjectSchema.safeParse({
+        mode: 'new',
+        name: 'a/b',
+        owner: 'octocat',
+        template: 'empty',
+      }).success,
     ).toBe(false);
+  });
+});
+
+describe('DEFAULT_NPM_COMMANDS', () => {
+  it('is a valid set of project commands', () => {
+    expect(projectSettingsSchema.parse({ commands: DEFAULT_NPM_COMMANDS }).commands).toEqual(
+      DEFAULT_NPM_COMMANDS,
+    );
+  });
+});
+
+describe('previewSchema', () => {
+  it('defaults the ready path to the root and rejects invalid ports', () => {
+    expect(previewSchema.parse({ port: 5173 })).toEqual({ port: 5173, readyPath: '/' });
+    expect(previewSchema.safeParse({ port: 0 }).success).toBe(false);
+    expect(previewSchema.safeParse({ port: 5173, readyPath: 'x' }).success).toBe(false);
   });
 });
 
 describe('updateProjectSchema', () => {
   it('leaves settings out when they are not provided', () => {
     expect(updateProjectSchema.parse({ name: 'Renamed' })).toEqual({ name: 'Renamed' });
+  });
+
+  it('does not let a patch change the linked repository', () => {
+    expect(updateProjectSchema.safeParse({ repoUrl: 'https://github.com/a/b' }).success).toBe(
+      false,
+    );
   });
 
   it('accepts an empty patch', () => {

@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "project_workspace_repo_unique" ON "project" USING btree ("workspace_id",lower("repo_owner"),lower("repo_name"));

@@ -11,6 +11,8 @@ export interface GitProvider {
   listOwners(): Promise<GitOwner[]>;
   /** Repositories of the account or of one of its organizations, sorted by name. */
   listRepos(owner: string): Promise<GitRepo[]>;
+  /** One repository the token can read; `GitError('not_found')` when it cannot. */
+  getRepo(owner: string, name: string): Promise<GitRepo>;
   /** Creates an empty repository; private unless stated otherwise. */
   createRepo(input: CreateRepoInput): Promise<GitRepo>;
   /** Writes the first commit, with all `files`, to an empty repository. */
@@ -28,6 +30,7 @@ export const GIT_PROVIDER_OPERATIONS = [
   'verifyToken',
   'listOwners',
   'listRepos',
+  'getRepo',
   'createRepo',
   'createInitialCommit',
   'createPullRequest',

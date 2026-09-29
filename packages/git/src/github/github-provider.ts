@@ -220,6 +220,12 @@ export function createGitHubProvider(
           .sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
       }),
 
+    getRepo: (owner, name) =>
+      guard(async () => {
+        const { data } = await octokit.request('GET /repos/{owner}/{repo}', { owner, repo: name });
+        return toRepo(data);
+      }),
+
     createRepo: ({ owner, name, description, private: isPrivate = true }: CreateRepoInput) =>
       guard(async () => {
         const body = { name, description: description ?? '', private: isPrivate, auto_init: false };

@@ -17,6 +17,7 @@
     "@aievo/db": "workspace:*",
     "@aievo/git": "workspace:*",
     "@aievo/llm": "workspace:*",
+    "@aievo/presets": "workspace:*",
     "@aievo/shared": "workspace:*",
     "@asteasolutions/zod-to-openapi": "^9.1.0",
     "express": "^5.2.1",

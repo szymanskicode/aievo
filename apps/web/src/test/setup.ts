@@ -4,8 +4,14 @@ import { cleanup } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll } from 'vitest';
 
 import '@/lib/zod-messages';
+import { preloadPages } from '@/router';
 
 import { server } from './server';
+
+// Route pages are lazy chunks. Loading them here keeps that cost out of the first test of a
+// file, whose `findBy*` would otherwise race a cold import while `pnpm test` runs every package
+// in parallel.
+await preloadPages();
 
 // jsdom lacks APIs that Radix UI calls when opening dialogs, selects and menus.
 class ResizeObserverStub {

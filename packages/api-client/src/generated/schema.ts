@@ -69,7 +69,7 @@ export interface paths {
             };
         };
         put?: never;
-        /** Create a project */
+        /** Create a project from an existing GitHub repository or a new one from a template */
         post: {
             parameters: {
                 query?: never;
@@ -83,7 +83,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Create a project */
+                /** @description Create a project from an existing GitHub repository or a new one from a template */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -101,8 +101,62 @@ export interface paths {
                         "application/json": components["schemas"]["ApiError"];
                     };
                 };
+                /** @description Resource not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiError"];
+                    };
+                };
+                /** @description Error */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiError"];
+                    };
+                };
                 /** @description Request body is not JSON */
                 415: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiError"];
+                    };
+                };
+                /** @description Error */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiError"];
+                    };
+                };
+                /** @description Error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiError"];
+                    };
+                };
+                /** @description Error */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiError"];
+                    };
+                };
+                /** @description Error */
+                504: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1314,6 +1368,78 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the templates a new repository can start from */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description List the templates a new repository can start from */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Template"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/setup-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** First-run checklist: which configuration steps the workspace has completed */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description First-run checklist: which configuration steps the workspace has completed */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SetupStatus"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/openapi.json": {
         parameters: {
             query?: never;
@@ -1368,6 +1494,10 @@ export interface components {
             name: string;
             description: string;
             repoUrl: string | null;
+            repoOwner: string | null;
+            repoName: string | null;
+            /** Format: uuid */
+            gitCredentialId: string | null;
             defaultBranch: string;
             settings: components["schemas"]["ProjectSettings"];
             testPolicy: components["schemas"]["TestPolicy"];
@@ -1384,6 +1514,10 @@ export interface components {
                 test?: string;
                 coverage?: string;
                 dev?: string;
+            };
+            preview?: {
+                port: number;
+                readyPath: string;
             };
         };
         TestPolicy: {
@@ -1427,11 +1561,47 @@ export interface components {
                 details?: unknown;
             };
         };
-        CreateProject: {
+        CreateProject: components["schemas"]["CreateExistingProject"] | components["schemas"]["CreateNewProject"];
+        CreateExistingProject: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            mode: "existing";
+            name?: string;
+            description?: string;
+            owner: string;
+            repo: string;
+            defaultBranch: string;
+            commands?: {
+                install?: string;
+                build?: string;
+                lint?: string;
+                test?: string;
+                coverage?: string;
+                dev?: string;
+            };
+            /** Format: uuid */
+            credentialId?: string;
+        };
+        CreateNewProject: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            mode: "new";
             name: string;
             description?: string;
-            /** Format: uri */
-            repoUrl?: string | null;
+            owner: string;
+            /** @default true */
+            private: boolean;
+            template: string;
+            /** Format: uuid */
+            credentialId?: string;
+        };
+        UpdateProject: {
+            name?: string;
+            description?: string;
             defaultBranch?: string;
             settings?: components["schemas"]["ProjectSettingsInput"];
             testPolicy?: components["schemas"]["TestPolicyInput"];
@@ -1445,6 +1615,11 @@ export interface components {
                 test?: string;
                 coverage?: string;
                 dev?: string;
+            };
+            preview?: {
+                port: number;
+                /** @default / */
+                readyPath: string;
             };
         };
         TestPolicyInput: {
@@ -1525,15 +1700,6 @@ export interface components {
                  */
                 allowDeleteTests: "require_human" | "allow" | "never";
             };
-        };
-        UpdateProject: {
-            name?: string;
-            description?: string;
-            /** Format: uri */
-            repoUrl?: string | null;
-            defaultBranch?: string;
-            settings?: components["schemas"]["ProjectSettingsInput"];
-            testPolicy?: components["schemas"]["TestPolicyInput"];
         };
         Task: {
             /** Format: uuid */
@@ -1712,6 +1878,63 @@ export interface components {
             defaultBranch: string;
             description: string | null;
             htmlUrl: string;
+        };
+        Template: {
+            id: string;
+            manifest: components["schemas"]["TemplateManifest"];
+        };
+        TemplateManifest: {
+            name: string;
+            description: string;
+            commands: {
+                install?: string;
+                build?: string;
+                lint?: string;
+                test?: string;
+                coverage?: string;
+                dev?: string;
+            };
+            preview: {
+                port: number;
+                readyPath: string;
+            } | null;
+            services: string[];
+            testPolicy: {
+                /** @enum {string} */
+                framework: "auto" | "vitest" | "jest";
+                /** @enum {string} */
+                coverageFormat: "istanbul-json" | "lcov" | "cobertura";
+                changedLines: {
+                    minLineCoverage: number;
+                    minBranchCoverage: number | null;
+                };
+                global: {
+                    failIfDropsBy: number | null;
+                };
+                requiredTypes: {
+                    /** @enum {string} */
+                    unit: "always" | "never";
+                    /** @enum {string} */
+                    integration: "always" | "on_api_change" | "never";
+                    /** @enum {string} */
+                    e2e: "always" | "on_acceptance_criteria" | "never";
+                };
+                testPaths: string[];
+                exclude: string[];
+                audit: {
+                    onEveryRun: boolean;
+                    /** @enum {string} */
+                    scheduled: "off" | "daily" | "weekly";
+                    /** @enum {string} */
+                    allowDeleteTests: "require_human" | "allow" | "never";
+                };
+            };
+            context: string[];
+        };
+        SetupStatus: {
+            modelProvider: boolean;
+            githubToken: boolean;
+            project: boolean;
         };
     };
     responses: never;

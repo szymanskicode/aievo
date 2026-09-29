@@ -4,6 +4,7 @@ import { queryOptions, useMutation, useQueryClient } from '@tanstack/react-query
 import { toast } from 'sonner';
 
 import { api } from '@/api/client';
+import { AFFECTS_SETUP } from '@/api/query-client';
 import { errorMessage } from '@/api/errors';
 
 type Model = Schemas['Model'];
@@ -38,6 +39,7 @@ export const modelsQuery = (providerId: string) =>
 export function useCreateProvider() {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: AFFECTS_SETUP,
     mutationFn: (body: Schemas['CreateProvider']) => unwrap(api.POST('/api/providers', { body })),
     // The variables hold the plaintext key: drop the finished mutation from the cache at once.
     gcTime: 0,
@@ -48,6 +50,7 @@ export function useCreateProvider() {
 export function useDeleteProvider() {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: AFFECTS_SETUP,
     mutationFn: (id: string) =>
       unwrap(api.DELETE('/api/providers/{id}', { params: { path: { id } } })),
     onSuccess: (_data, id) => {
@@ -61,6 +64,7 @@ export function useDeleteProvider() {
 export function useTestProvider(providerId: string) {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: AFFECTS_SETUP,
     mutationFn: () =>
       unwrap(api.POST('/api/providers/{id}/test', { params: { path: { id: providerId } } })),
     onSuccess: (result) => {
@@ -75,6 +79,7 @@ export function useSetModelEnabled(providerId: string) {
   const queryKey = providerKeys.models(providerId);
 
   return useMutation({
+    meta: AFFECTS_SETUP,
     mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
       unwrap(api.PATCH('/api/models/{id}', { params: { path: { id } }, body: { enabled } })),
     onMutate: async ({ id, enabled }) => {

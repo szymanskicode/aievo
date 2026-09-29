@@ -1,4 +1,4 @@
-import { createProjectSchema, createTaskSchema } from '@aievo/shared';
+import { createTaskSchema, updateProjectSchema, updateProviderSchema } from '@aievo/shared';
 import { describe, expect, it } from 'vitest';
 
 import './zod-messages';
@@ -9,7 +9,7 @@ function messages(result: { error?: { issues: { message: string }[] } }): string
 
 describe('form messages for the shared schemas', () => {
   it('reports an empty required string as "Required"', () => {
-    expect(messages(createProjectSchema.safeParse({ name: '' }))).toEqual(['Required']);
+    expect(messages(updateProjectSchema.safeParse({ name: '' }))).toEqual(['Required']);
   });
 
   it('reports the maximum length', () => {
@@ -34,7 +34,7 @@ describe('form messages for the shared schemas', () => {
   });
 
   it('reports an invalid URL', () => {
-    const result = createProjectSchema.safeParse({ name: 'p', repoUrl: 'ftp://example.com' });
+    const result = updateProviderSchema.safeParse({ baseUrl: 'ftp://example.com' });
 
     expect(messages(result)).toEqual(['Enter a valid http(s) URL']);
   });

@@ -18,6 +18,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test:e2e": "turbo run test:e2e",
+    "test:templates": "turbo run test:templates",
     "db:generate": "pnpm --filter @aievo/db db:generate",
     "db:migrate": "pnpm --filter @aievo/db db:migrate",
     "db:seed": "pnpm --filter @aievo/db db:seed",

@@ -1,8 +1,10 @@
+import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet } from '@tanstack/react-router';
 import { FolderKanbanIcon, SettingsIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { Toaster } from '@/components/ui/sonner';
+import { setupStatusQuery } from '@/features/setup/queries';
 
 /** Top-level sections of the side menu; routes with parameters never belong here. */
 interface NavLinkProps {
@@ -24,6 +26,18 @@ function NavLink({ to, icon, children }: NavLinkProps) {
   );
 }
 
+/** A dot next to Settings while a model provider or the GitHub token is still missing. */
+function SettingsIncompleteMarker() {
+  const status = useQuery(setupStatusQuery());
+  if (!status.data || (status.data.modelProvider && status.data.githubToken)) return null;
+  return (
+    <>
+      <span aria-hidden className="ml-auto size-2 rounded-full bg-amber-500" />
+      <span className="sr-only"> (setup incomplete)</span>
+    </>
+  );
+}
+
 export function AppLayout() {
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -37,6 +51,7 @@ export function AppLayout() {
           </NavLink>
           <NavLink to="/settings" icon={<SettingsIcon />}>
             Settings
+            <SettingsIncompleteMarker />
           </NavLink>
         </nav>
       </aside>

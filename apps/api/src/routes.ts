@@ -8,7 +8,9 @@ import { healthRoutes } from './modules/health/routes.js';
 import { modelRoutes } from './modules/models/routes.js';
 import { projectRoutes } from './modules/projects/routes.js';
 import { providerRoutes } from './modules/providers/routes.js';
+import { setupRoutes } from './modules/setup/routes.js';
 import { taskRoutes } from './modules/tasks/routes.js';
+import { templateRoutes } from './modules/templates/routes.js';
 import { buildOpenApiDocument } from './openapi/document.js';
 import type { OpenApiDocument } from './openapi/document.js';
 
@@ -43,5 +45,7 @@ export const apiRoutes: readonly Route[] = [
   ...modelRoutes,
   ...gitCredentialRoutes,
   ...githubRoutes,
+  ...templateRoutes,
+  ...setupRoutes,
   openApiRoute,
 ];

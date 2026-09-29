@@ -1,0 +1,15 @@
+name: React + Vite + TypeScript + Vitest
+description: Single-page React app with Vite, TypeScript and Vitest tests with coverage.
+commands:
+  install: npm install
+  dev: npm run dev -- --host 0.0.0.0 --port 5173
+  build: npm run build
+  lint: npm run lint
+  test: npm test
+  coverage: npm run test:coverage
+preview: { port: 5173, readyPath: / }
+services: []
+testPolicy:
+  framework: vitest
+  changedLines: { minLineCoverage: 80 }
+context: [docs/CONVENTIONS.md]

@@ -15,6 +15,9 @@ export function projectFixture(overrides: Partial<Schemas['Project']> = {}): Sch
     name: 'Demo project',
     description: '',
     repoUrl: null,
+    repoOwner: null,
+    repoName: null,
+    gitCredentialId: null,
     defaultBranch: 'main',
     settings: { commands: {} },
     testPolicy: {
@@ -91,4 +94,75 @@ export function modelFixture(overrides: Partial<Schemas['Model']> = {}): Schemas
     enabled: true,
     ...overrides,
   };
+}
+
+export function gitCredentialFixture(
+  overrides: Partial<Schemas['GitCredential']> = {},
+): Schemas['GitCredential'] {
+  return {
+    id: fakeId(),
+    provider: 'github',
+    label: 'GitHub',
+    tokenHint: 'wxyz',
+    githubLogin: 'octocat',
+    expiresAt: '2026-12-31T00:00:00.000Z',
+    createdAt: NOW,
+    updatedAt: NOW,
+    ...overrides,
+  };
+}
+
+export function githubRepoFixture(
+  overrides: Partial<Schemas['GithubRepo']> = {},
+): Schemas['GithubRepo'] {
+  const owner = overrides.owner ?? 'octocat';
+  const name = overrides.name ?? 'hello';
+  return {
+    owner,
+    name,
+    fullName: `${owner}/${name}`,
+    private: true,
+    defaultBranch: 'main',
+    description: null,
+    htmlUrl: `https://github.com/${owner}/${name}`,
+    ...overrides,
+  };
+}
+
+export function templateFixture(
+  id: string,
+  manifest: Partial<Schemas['TemplateManifest']> = {},
+): Schemas['Template'] {
+  return {
+    id,
+    manifest: {
+      name: id,
+      description: `The ${id} template`,
+      commands: {},
+      preview: null,
+      services: [],
+      testPolicy: {
+        framework: 'auto',
+        coverageFormat: 'istanbul-json',
+        changedLines: { minLineCoverage: 80, minBranchCoverage: null },
+        global: { failIfDropsBy: 1 },
+        requiredTypes: {
+          unit: 'always',
+          integration: 'on_api_change',
+          e2e: 'on_acceptance_criteria',
+        },
+        testPaths: ['**/*.test.ts'],
+        exclude: [],
+        audit: { onEveryRun: true, scheduled: 'weekly', allowDeleteTests: 'require_human' },
+      },
+      context: [],
+      ...manifest,
+    },
+  };
+}
+
+export function setupStatusFixture(
+  overrides: Partial<Schemas['SetupStatus']> = {},
+): Schemas['SetupStatus'] {
+  return { modelProvider: true, githubToken: true, project: true, ...overrides };
 }

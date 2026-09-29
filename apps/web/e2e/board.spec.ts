@@ -17,18 +17,18 @@ async function dragTo(page: Page, source: Locator, target: Locator): Promise<voi
   await page.mouse.up();
 }
 
+// Projects are created through the wizard, which needs GitHub; the board uses the seeded one.
+const SEEDED_PROJECT = 'AIEvo';
+
 test('a task moved to another column stays there after a reload', async ({ page }) => {
-  const projectName = `E2E project ${Date.now()}`;
-  const taskTitle = 'Drag me to Ready';
+  const taskTitle = `Drag me to Ready ${Date.now()}`;
 
   await page.goto('/');
-  await page.getByRole('button', { name: 'New project' }).first().click();
-  const projectDialog = page.getByRole('dialog', { name: 'New project' });
-  await projectDialog.getByLabel('Name').fill(projectName);
-  await projectDialog.getByRole('button', { name: 'Create project' }).click();
-
-  await page.getByRole('link', { name: projectName }).click();
-  await expect(page.getByRole('heading', { name: projectName })).toBeVisible();
+  await page
+    .getByRole('article', { name: SEEDED_PROJECT })
+    .getByRole('link', { name: SEEDED_PROJECT })
+    .click();
+  await expect(page.getByRole('heading', { name: SEEDED_PROJECT })).toBeVisible();
 
   await page.getByRole('link', { name: 'New task' }).click();
   const taskSheet = page.getByRole('dialog', { name: 'New task' });

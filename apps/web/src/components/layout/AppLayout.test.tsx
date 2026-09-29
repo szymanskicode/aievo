@@ -35,6 +35,32 @@ describe('AppLayout', () => {
     expect(router.state.location.pathname).toBe('/settings/providers');
   });
 
+  it('marks Settings while a model provider or the GitHub token is missing', async () => {
+    server.use(
+      http.get(apiUrl('/setup-status'), () =>
+        HttpResponse.json({ modelProvider: true, githubToken: false, project: false }),
+      ),
+    );
+    renderApp('/projects');
+
+    const nav = await screen.findByRole('navigation', { name: 'Main' });
+    const settings = await within(nav).findByRole('link', { name: /setup incomplete/ });
+    expect(settings).toHaveAccessibleName(/^Settings\s*\(setup incomplete\)$/);
+  });
+
+  it('does not mark Settings when only the project is missing', async () => {
+    server.use(
+      http.get(apiUrl('/setup-status'), () =>
+        HttpResponse.json({ modelProvider: true, githubToken: true, project: false }),
+      ),
+    );
+    renderApp('/projects');
+
+    await screen.findByRole('region', { name: 'Getting started' });
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    expect(within(nav).getByRole('link', { name: 'Settings' })).toBeInTheDocument();
+  });
+
   it('shows a not found page for unknown URLs', async () => {
     renderApp('/nope');
 

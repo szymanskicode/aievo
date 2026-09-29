@@ -52,12 +52,27 @@ export async function resolveGitCredential(
   return only;
 }
 
-/** A GitHub adapter holding the decrypted token only for the lifetime of this request. */
-export async function openGitHub(
+/**
+ * A GitHub adapter holding the decrypted token only for the lifetime of this request,
+ * with the credential it uses.
+ */
+export async function openGitHubCredential(
   { db, secretBox }: { db: Db; secretBox: SecretBox },
   workspaceId: string,
   credentialId: string | undefined,
-): Promise<GitProvider> {
+): Promise<{ credential: GitCredential; github: GitProvider }> {
   const credential = await resolveGitCredential(db, workspaceId, credentialId);
-  return createGitHubProvider(openToken(secretBox, credential.encryptedToken));
+  return {
+    credential,
+    github: createGitHubProvider(openToken(secretBox, credential.encryptedToken)),
+  };
+}
+
+/** A GitHub adapter holding the decrypted token only for the lifetime of this request. */
+export async function openGitHub(
+  ctx: { db: Db; secretBox: SecretBox },
+  workspaceId: string,
+  credentialId: string | undefined,
+): Promise<GitProvider> {
+  return (await openGitHubCredential(ctx, workspaceId, credentialId)).github;
 }

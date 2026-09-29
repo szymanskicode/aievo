@@ -1,4 +1,4 @@
-import { InvalidReferenceError } from '@aievo/db';
+import { DuplicateRowError, InvalidReferenceError } from '@aievo/db';
 import { GitError } from '@aievo/git';
 import type { GitErrorKind } from '@aievo/git';
 import { ProviderError } from '@aievo/llm';
@@ -200,6 +200,11 @@ export function toApiError(error: unknown): ApiError {
 
   if (error instanceof GitError) {
     return fromGitError(error);
+  }
+
+  if (error instanceof DuplicateRowError) {
+    // The message is written by our own repository code and never quotes user input.
+    return new ApiError(409, 'conflict', error.message);
   }
 
   if (error instanceof InvalidReferenceError) {

@@ -100,17 +100,16 @@ export async function insertGitCredential(
   });
 }
 
-/**
- * Points a project at a GitHub repository through a credential. Raw SQL until the project
- * repository learns about repositories (stage 2, prompt 2).
- */
-export async function linkProjectToCredential(
+/** A project linked to the GitHub repository `octocat/demo` through a stored credential. */
+export async function insertLinkedProject(
   db: Db,
-  projectId: string,
+  workspaceId: string,
   credentialId: string,
-): Promise<void> {
-  await db.$client.query(
-    `UPDATE project SET repo_owner = 'octocat', repo_name = 'demo', git_credential_id = $1 WHERE id = $2`,
-    [credentialId, projectId],
-  );
+  name = 'Demo',
+): Promise<Project> {
+  return createProject(db, workspaceId, {
+    name,
+    repoUrl: 'https://github.com/octocat/demo',
+    repo: { owner: 'octocat', name: 'demo', gitCredentialId: credentialId },
+  });
 }

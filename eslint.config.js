@@ -14,6 +14,8 @@ export default tseslint.config(
       '**/coverage/**',
       '**/.turbo/**',
       '**/drizzle/**',
+      // Project templates are linted by their own tooling in `pnpm test:templates`.
+      'packages/presets/templates/**',
     ],
   },
 

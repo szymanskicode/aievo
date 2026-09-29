@@ -44,7 +44,18 @@ export function ProjectCard({ project }: { project: Schemas['Project'] }) {
       {project.repoUrl && (
         <CardContent className="flex items-center gap-1.5 text-sm text-muted-foreground">
           <GitBranchIcon className="size-4 shrink-0" />
-          <span className="truncate">{project.repoUrl}</span>
+          {project.repoOwner && project.repoName ? (
+            <a
+              href={project.repoUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="truncate hover:text-foreground hover:underline"
+            >
+              {project.repoOwner}/{project.repoName}
+            </a>
+          ) : (
+            <span className="truncate">{project.repoUrl}</span>
+          )}
         </CardContent>
       )}
     </Card>

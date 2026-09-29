@@ -82,9 +82,18 @@ export const githubCredentialQuerySchema = z.object({
 export type GithubCredentialQuery = z.infer<typeof githubCredentialQuerySchema>;
 
 /** GitHub logins: alphanumerics and single hyphens, at most 39 characters. */
-const githubLoginSchema = z
+export const githubLoginSchema = z
   .string()
+  .min(1)
   .regex(/^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}$/, 'Invalid GitHub login');
+
+/** GitHub repository names: letters, digits, `.`, `-` and `_`, at most 100 characters. */
+export const githubRepoNameSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .regex(/^[A-Za-z0-9._-]{1,100}$/, 'Use letters, digits, ".", "-" or "_" (at most 100)')
+  .refine((name) => name !== '.' && name !== '..', 'This name is reserved by GitHub');
 
 export const githubReposQuerySchema = githubCredentialQuerySchema.extend({
   owner: githubLoginSchema,

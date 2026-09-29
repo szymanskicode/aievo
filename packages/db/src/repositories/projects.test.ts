@@ -1,8 +1,11 @@
 import { ZodError } from 'zod';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
+import { DuplicateRowError, InvalidReferenceError } from '../errors.js';
 import { closeTestDb, getTestDb, resetDb } from '../test/db.js';
 import { createWorkspace } from '../test/fixtures.js';
+import { createGitCredential } from './git-credentials.js';
+import type { NewGitCredentialInput } from './git-credentials.js';
 import {
   createProject,
   deleteProject,
@@ -13,6 +16,14 @@ import {
 
 const db = getTestDb();
 let workspaceId: string;
+
+const credentialInput: NewGitCredentialInput = {
+  label: 'GitHub',
+  encryptedToken: 'v1:iv:tag:data',
+  tokenHint: 'abcd',
+  githubLogin: 'octocat',
+  expiresAt: null,
+};
 
 beforeEach(async () => {
   await resetDb(db);
@@ -35,6 +46,66 @@ describe('project repository', () => {
     });
     expect(created.testPolicy.changedLines.minLineCoverage).toBe(80);
     expect(await getProject(db, workspaceId, created.id)).toEqual(created);
+  });
+
+  it('links a project to a repository and a credential of the workspace', async () => {
+    const credential = await createGitCredential(db, workspaceId, credentialInput);
+
+    const created = await createProject(db, workspaceId, {
+      name: 'Hello',
+      repoUrl: 'https://github.com/octocat/hello',
+      repo: { owner: 'octocat', name: 'hello', gitCredentialId: credential.id },
+    });
+
+    expect(created).toMatchObject({
+      repoOwner: 'octocat',
+      repoName: 'hello',
+      gitCredentialId: credential.id,
+    });
+  });
+
+  it('refuses a credential of another workspace', async () => {
+    const strangerId = await createWorkspace(db, 'Stranger');
+    const credential = await createGitCredential(db, strangerId, credentialInput);
+
+    await expect(
+      createProject(db, workspaceId, {
+        name: 'Hello',
+        repo: { owner: 'octocat', name: 'hello', gitCredentialId: credential.id },
+      }),
+    ).rejects.toBeInstanceOf(InvalidReferenceError);
+    expect(await listProjects(db, workspaceId)).toEqual([]);
+  });
+
+  it('allows one project per repository in a workspace, ignoring letter case', async () => {
+    const credential = await createGitCredential(db, workspaceId, credentialInput);
+    const repo = { owner: 'octocat', name: 'hello', gitCredentialId: credential.id };
+    await createProject(db, workspaceId, { name: 'First', repo });
+
+    await expect(
+      createProject(db, workspaceId, {
+        name: 'Second',
+        repo: { ...repo, owner: 'OctoCat', name: 'Hello' },
+      }),
+    ).rejects.toBeInstanceOf(DuplicateRowError);
+    expect((await listProjects(db, workspaceId)).map((p) => p.name)).toEqual(['First']);
+  });
+
+  it('lets other workspaces and projects without a repository coexist', async () => {
+    const strangerId = await createWorkspace(db, 'Stranger');
+    const own = await createGitCredential(db, workspaceId, credentialInput);
+    const foreign = await createGitCredential(db, strangerId, credentialInput);
+    const repo = { owner: 'octocat', name: 'hello' };
+
+    await createProject(db, workspaceId, { name: 'A', repo: { ...repo, gitCredentialId: own.id } });
+    await createProject(db, strangerId, {
+      name: 'B',
+      repo: { ...repo, gitCredentialId: foreign.id },
+    });
+    await createProject(db, workspaceId, { name: 'No repo 1' });
+    await createProject(db, workspaceId, { name: 'No repo 2' });
+
+    expect(await listProjects(db, workspaceId)).toHaveLength(3);
   });
 
   it('lists projects of the workspace', async () => {

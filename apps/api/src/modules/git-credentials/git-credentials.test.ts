@@ -11,8 +11,7 @@ import {
   MISSING_ID,
   fakeGitHubToken,
   insertGitCredential,
-  insertProject,
-  linkProjectToCredential,
+  insertLinkedProject,
   setupTestApp,
 } from '../../test/app.js';
 import type { TestContext } from '../../test/app.js';
@@ -247,8 +246,7 @@ describe('DELETE /api/git-credentials/:id', () => {
 
   it('refuses to delete a credential that a project uses', async () => {
     const credential = await insertGitCredential(ctx, ctx.workspaceId, fakeGitHubToken());
-    const used = await insertProject(ctx.db, ctx.workspaceId);
-    await linkProjectToCredential(ctx.db, used.id, credential.id);
+    await insertLinkedProject(ctx.db, ctx.workspaceId, credential.id);
 
     const response = await request(ctx.app).delete(`/api/git-credentials/${credential.id}`);
 

@@ -41,6 +41,8 @@ const EXPECTED_OPERATIONS = [
   'DELETE /api/git-credentials/{id}',
   'GET /api/github/owners',
   'GET /api/github/repos',
+  'GET /api/templates',
+  'GET /api/setup-status',
 ];
 
 const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete'] as const;
@@ -125,8 +127,11 @@ describe('OpenAPI document', () => {
   it('keeps fields with defaults optional in request bodies', () => {
     const schemas = getOpenApiDocument().components?.schemas ?? {};
 
-    expect(schemas.CreateProject).toMatchObject({
+    expect(schemas.UpdateProject).toMatchObject({
       properties: { settings: { $ref: '#/components/schemas/ProjectSettingsInput' } },
+    });
+    expect(schemas.CreateNewProject).toMatchObject({
+      required: expect.not.arrayContaining(['private']),
     });
     expect(schemas.ProjectSettingsInput).not.toHaveProperty('required');
     expect(schemas.TestPolicyInput).not.toHaveProperty('required');

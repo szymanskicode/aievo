@@ -1,3 +1,4 @@
+import { DuplicateRowError } from '@aievo/db';
 import { GitError } from '@aievo/git';
 import type { GitErrorKind } from '@aievo/git';
 import { ProviderError } from '@aievo/llm';
@@ -70,5 +71,16 @@ describe('toApiError: Git errors', () => {
       new GitError('rate_limited', { status: 429, resetAt: '2026-09-29T12:00:00.000Z' }),
     );
     expect(limited.details).toEqual({ githubStatus: 429, resetAt: '2026-09-29T12:00:00.000Z' });
+  });
+});
+
+describe('toApiError: repository errors', () => {
+  it('turns a duplicate row into a 409 with the repository message', () => {
+    const error = toApiError(new DuplicateRowError('Another project already uses this repository'));
+
+    expect(error.status).toBe(409);
+    expect(error.toBody()).toEqual({
+      error: { code: 'conflict', message: 'Another project already uses this repository' },
+    });
   });
 });

@@ -1,22 +1,45 @@
 import { z } from 'zod';
 
+import { githubLoginSchema, githubRepoNameSchema } from './git.js';
 import { outputSchema } from './output.js';
 
 const commandSchema = z.string().trim().min(1);
 
+/** Commands the platform runs in a project; each may be missing until someone sets it. */
+export const projectCommandsSchema = z.object({
+  install: commandSchema.optional(),
+  build: commandSchema.optional(),
+  lint: commandSchema.optional(),
+  test: commandSchema.optional(),
+  coverage: commandSchema.optional(),
+  dev: commandSchema.optional(),
+});
+
+export type ProjectCommands = z.infer<typeof projectCommandsSchema>;
+
+/** Commands proposed for an existing npm repository until stack detection exists (stage 4). */
+export const DEFAULT_NPM_COMMANDS = {
+  install: 'npm install',
+  build: 'npm run build',
+  lint: 'npm run lint',
+  test: 'npm test',
+  coverage: 'npm run test:coverage',
+  dev: 'npm run dev',
+} as const satisfies ProjectCommands;
+
+/** Where the running app answers once `commands.dev` has started it. */
+export const previewSchema = z.strictObject({
+  port: z.int().min(1).max(65_535),
+  readyPath: z.string().startsWith('/').default('/'),
+});
+
+export type Preview = z.infer<typeof previewSchema>;
+
 /** Shape of `project.settings` (JSONB). Grows with later stages. */
 export const projectSettingsSchema = z
   .object({
-    commands: z
-      .object({
-        install: commandSchema.optional(),
-        build: commandSchema.optional(),
-        lint: commandSchema.optional(),
-        test: commandSchema.optional(),
-        coverage: commandSchema.optional(),
-        dev: commandSchema.optional(),
-      })
-      .default({}),
+    commands: projectCommandsSchema.default({}),
+    preview: previewSchema.optional(),
   })
   .meta({ id: 'ProjectSettingsInput' });
 
@@ -78,28 +101,76 @@ export type TestPolicy = z.infer<typeof testPolicySchema>;
 export type ProjectSettingsInput = z.input<typeof projectSettingsSchema>;
 export type TestPolicyInput = z.input<typeof testPolicySchema>;
 
+const projectNameSchema = z.string().trim().min(1).max(200);
+const descriptionSchema = z.string().max(10_000);
+
+/** Git refuses whitespace and these characters in branch names. */
+const branchSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(255)
+  .regex(/^[^\s~^:?*[\\]+$/, 'Enter a valid branch name');
+
+/** Which stored GitHub token to use; may be omitted when the workspace has exactly one. */
+const credentialIdSchema = z.uuid().optional();
+
 /**
- * Body of `POST /projects`. Fields have no defaults here: the repository applies them,
- * so the same fields can be reused as an optional patch without resetting anything.
+ * Path A of the project wizard: connect a repository that already exists.
+ * `name` defaults to the repository name.
  */
-export const createProjectSchema = z
+export const createExistingProjectSchema = z
   .strictObject({
-    name: z.string().trim().min(1).max(200),
-    description: z.string().max(10_000).optional(),
-    repoUrl: z
-      .url({ protocol: /^https?$/ })
-      .nullable()
-      .optional(),
-    defaultBranch: z.string().trim().min(1).max(255).optional(),
-    settings: projectSettingsSchema.optional(),
-    testPolicy: testPolicySchema.optional(),
+    mode: z.literal('existing'),
+    name: projectNameSchema.optional(),
+    description: descriptionSchema.optional(),
+    owner: githubLoginSchema,
+    repo: githubRepoNameSchema,
+    defaultBranch: branchSchema,
+    commands: projectCommandsSchema.optional(),
+    credentialId: credentialIdSchema,
   })
+  .meta({ id: 'CreateExistingProject' });
+
+export type CreateExistingProjectInput = z.infer<typeof createExistingProjectSchema>;
+
+/** Path B of the project wizard: create a repository from a template. `name` names both. */
+export const createNewProjectSchema = z
+  .strictObject({
+    mode: z.literal('new'),
+    name: githubRepoNameSchema,
+    // Also the GitHub repository description, which GitHub limits to 350 characters.
+    description: z.string().max(350).optional(),
+    owner: githubLoginSchema,
+    private: z.boolean().default(true),
+    template: z.string().trim().min(1).max(100),
+    credentialId: credentialIdSchema,
+  })
+  .meta({ id: 'CreateNewProject' });
+
+export type CreateNewProjectInput = z.infer<typeof createNewProjectSchema>;
+
+/** Body of `POST /projects`: every project is linked to a GitHub repository. */
+export const createProjectSchema = z
+  .discriminatedUnion('mode', [createExistingProjectSchema, createNewProjectSchema])
   .meta({ id: 'CreateProject' });
 
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
 
-/** Body of `PATCH /projects/:id`: only the provided fields change. */
-export const updateProjectSchema = createProjectSchema.partial().meta({ id: 'UpdateProject' });
+/**
+ * Body of `PATCH /projects/:id`: only the provided fields change. The linked repository
+ * is set by the wizard and cannot be changed here.
+ */
+export const updateProjectSchema = z
+  .strictObject({
+    name: projectNameSchema,
+    description: descriptionSchema,
+    defaultBranch: branchSchema,
+    settings: projectSettingsSchema,
+    testPolicy: testPolicySchema,
+  })
+  .partial()
+  .meta({ id: 'UpdateProject' });
 
 export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;
 
@@ -110,6 +181,10 @@ export const projectSchema = z
     name: z.string(),
     description: z.string(),
     repoUrl: z.string().nullable(),
+    /** Owner and name of the linked GitHub repository; both `null` when none is linked. */
+    repoOwner: z.string().nullable(),
+    repoName: z.string().nullable(),
+    gitCredentialId: z.uuid().nullable(),
     defaultBranch: z.string(),
     settings: outputSchema(projectSettingsSchema).meta({ id: 'ProjectSettings' }),
     testPolicy: outputSchema(testPolicySchema).meta({ id: 'TestPolicy' }),

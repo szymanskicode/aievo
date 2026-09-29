@@ -61,19 +61,25 @@ export interface TaskContext {
   title: string;
   description: string;
   acceptanceCriteria?: string[];
-  /** Extra project context (conventions, artifacts of earlier steps). */
+  /** Project documents (conventions, README…); the model gets them marked as data. */
   context?: string;
+}
+
+export interface AllowedCommand {
+  command: string;
+  /**
+   * Whether plain arguments (no shell syntax) may follow, e.g. `npm test -- src/a.test.ts`.
+   * Leave it off where arguments change the project, like `npm install <package>`.
+   */
+  allowArgs: boolean;
 }
 
 export interface AgentRunInput {
   agent: AgentConfig;
   task: TaskContext;
   sandbox: Sandbox;
-  /**
-   * Commands `run_command` accepts: the project's commands and the configured extra ones.
-   * An allowed command may be followed by plain arguments (no shell syntax).
-   */
-  commands: { allowed: string[] };
+  /** Commands `run_command` accepts: the project's commands and the configured extra ones. */
+  commands: { allowed: AllowedCommand[] };
   /** Ref `git_diff` compares against, e.g. `origin/main`. */
   git: { baseRef: string };
   limits: Limits;
@@ -147,4 +153,9 @@ export interface AgentRuntime {
 
 export interface NativeRuntimeOptions {
   llm: LlmClient;
+  /**
+   * Called with an unexpected tool failure (a bug, not a refused action). The model only hears
+   * that the tool failed; this is where the caller can log the real cause.
+   */
+  onToolError?: (error: unknown, call: { tool: string; callId: string }) => void;
 }

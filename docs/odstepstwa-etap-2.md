@@ -62,8 +62,8 @@ Lista punktów do przeniesienia do `docs/architecture.md` (sekcje 10, 11, 18) na
 ## 10. `run_command` przyjmuje argumenty, `git_diff` pokazuje nowe pliki bez zapisu indeksu (prompt 4)
 
 - **Dokument (sekcja 11, 15):** komenda z listy dozwolonych.
-- **Stan faktyczny:** dozwolona komenda (komendy projektu + lista dodatkowa) sama albo z dopisanymi argumentami złożonymi tylko ze znaków `[A-Za-z0-9_./=:@%+,-]` i spacji, np. `npm test -- src/math.test.ts`. Cudzysłowy, `;`, `|`, `&`, `$`, przekierowania i nowe linie są odrzucane. `git_diff` działa w sandboxie; ponieważ `.git` jest tylko do odczytu (punkt 8), nowe nieśledzone pliki pokazuje przez `git diff --no-index /dev/null <plik>`.
-- **Dodatkowo:** każda ścieżka narzędzia jest sprawdzana po rozwiązaniu dowiązań (`Sandbox.realPath`, `realpath -m` w kontenerze), a zapis do `.git` jest zawsze odrzucany, niezależnie od globów agenta.
+- **Stan faktyczny:** dozwolona komenda (komendy projektu + lista dodatkowa) sama, a przy wpisach z `allowArgs: true` także z dopisanymi argumentami złożonymi tylko ze znaków `[A-Za-z0-9_./=:@%+,-]` i spacji, np. `npm test -- src/math.test.ts`. Komendy, których argumenty zmieniają projekt (np. `install`, bo `npm install <pakiet>` dodaje zależność), podaje się bez `allowArgs`. Cudzysłowy, `;`, `|`, `&`, `$`, przekierowania i nowe linie są odrzucane. `git_diff` działa w sandboxie; ponieważ `.git` jest tylko do odczytu (punkt 8), nowe nieśledzone pliki pokazuje przez `git diff --no-index /dev/null <plik>`.
+- **Dodatkowo:** każda ścieżka narzędzia jest sprawdzana po rozwiązaniu dowiązań (`Sandbox.realPath`, `realpath -m` w kontenerze), a zapis do `.git` jest zawsze odrzucany, niezależnie od globów agenta. Globy uprawnień dopasowują też pliki i katalogi zaczynające się od kropki (`**` obejmuje `.gitignore` i `.github/…`). Kontekst projektu w wiadomości z taskiem jest oznaczony jako dane, tak jak wyniki narzędzi.
 - **Proponowana zmiana:** sekcja 11, tabela narzędzi i akapit o uprawnieniach.
 
 ## 11. Koszt tokenów cache liczony po cenie wejścia (prompt 4)

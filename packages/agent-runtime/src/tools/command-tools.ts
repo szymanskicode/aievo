@@ -2,7 +2,7 @@ import { WORKSPACE_DIR } from '@aievo/sandbox';
 import { z } from 'zod';
 
 import { resolveToolPath } from './paths.js';
-import { isAllowedCommand, shellQuote } from './shell.js';
+import { describeAllowedCommands, isAllowedCommand, shellQuote } from './shell.js';
 import { ToolError, defineTool } from './tool.js';
 
 /** Lines of command output the model gets. */
@@ -17,16 +17,16 @@ export const runCommandTool = defineTool({
   name: 'run_command',
   description:
     'Run one of the allowed project commands (install, build, lint, test, coverage and the ' +
-    'configured extra ones) in /workspace. Plain arguments may be appended, e.g. ' +
-    '"npm test -- src/math.test.ts"; shell syntax (quotes, ;, |, &, $, redirections) is refused. ' +
+    'configured extra ones) in /workspace. Where allowed, plain arguments may be appended, ' +
+    'e.g. "npm test -- src/math.test.ts"; shell syntax (quotes, ;, |, &, $, redirections) is ' +
+    'refused. ' +
     `Returns the exit code and the last ${COMMAND_OUTPUT_LINES} lines of output.`,
   input: z.object({ command: z.string().min(1) }),
   async execute({ command }, context) {
     const allowed = context.commands.allowed;
     if (!isAllowedCommand(command, allowed)) {
-      const list = allowed.length > 0 ? allowed.map((entry) => `- ${entry}`).join('\n') : '(none)';
       throw new ToolError(
-        `This command is not allowed. Allowed commands (optionally followed by plain arguments):\n${list}`,
+        `This command is not allowed. Allowed commands:\n${describeAllowedCommands(allowed)}`,
       );
     }
     const result = await context.sandbox.exec(command.trim(), {

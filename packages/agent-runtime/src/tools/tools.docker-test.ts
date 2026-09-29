@@ -93,7 +93,10 @@ describe('tools in a real sandbox', () => {
   });
 
   it('runs allowed commands', async () => {
-    const context = { ...toolContext(sandbox), commands: { allowed: ['node --version'] } };
+    const context = {
+      ...toolContext(sandbox),
+      commands: { allowed: [{ command: 'node --version', allowArgs: false }] },
+    };
 
     const result = await runCommandTool.execute({ command: 'node --version' }, context);
 

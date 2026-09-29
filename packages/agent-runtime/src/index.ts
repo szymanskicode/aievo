@@ -10,9 +10,10 @@ export type {
   AgentRunInput,
   AgentRuntime,
   AgentUsage,
+  AllowedCommand,
   Limits,
   NativeRuntimeOptions,
   TaskContext,
   ToolName,
 } from './types.js';
-export { isAllowedCommand } from './tools/shell.js';
+export { describeAllowedCommands, isAllowedCommand } from './tools/shell.js';

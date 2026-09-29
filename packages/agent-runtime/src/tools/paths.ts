@@ -1,7 +1,6 @@
-import path from 'node:path';
-
 import { WORKSPACE_DIR, resolveWorkspacePath, toWorkspaceRelative } from '@aievo/sandbox';
 
+import { matchesPath } from './glob.js';
 import type { ToolContext } from './tool.js';
 import { ToolError } from './tool.js';
 
@@ -50,7 +49,7 @@ export async function resolveWritablePath(
   if (resolved.relative === '.' || resolved.relative.split('/').includes('.git')) {
     throw new ToolError(`Writing to "${input}" is not allowed: .git is managed by the platform.`);
   }
-  if (!globs.some((glob) => path.posix.matchesGlob(resolved.relative, glob))) {
+  if (!globs.some((glob) => matchesPath(resolved.relative, glob))) {
     throw new ToolError(
       `This agent may not write "${resolved.relative}". Allowed paths: ${globs.join(', ')}.`,
     );

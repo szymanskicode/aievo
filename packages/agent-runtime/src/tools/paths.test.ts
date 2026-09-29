@@ -83,6 +83,17 @@ describe('resolveWritablePath', () => {
     });
   });
 
+  it('lets ** cover dotfiles and dot directories', async () => {
+    const context = toolContext(sandbox, { permissions: { writeGlobs: ['**'] } });
+
+    expect(await resolveWritablePath(context, '.gitignore')).toMatchObject({
+      relative: '.gitignore',
+    });
+    expect(await resolveWritablePath(context, '.github/workflows/ci.yml')).toMatchObject({
+      relative: '.github/workflows/ci.yml',
+    });
+  });
+
   it('refuses paths outside the write globs and names the allowed ones', async () => {
     const context = toolContext(sandbox, { permissions: { writeGlobs: ['**/*.test.ts'] } });
 

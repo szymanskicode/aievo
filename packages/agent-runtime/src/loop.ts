@@ -15,7 +15,7 @@ import { SandboxError } from '@aievo/sandbox';
 import { truncateToolResult } from '@aievo/shared';
 import type { JsonValue } from '@aievo/shared';
 
-import { CONTINUE_MESSAGE, buildSystemPrompt, buildTaskMessage, wrapToolOutput } from './prompt.js';
+import { CONTINUE_MESSAGE, buildSystemPrompt, buildTaskMessage, wrapData } from './prompt.js';
 import { FINISH_DESCRIPTION, FINISH_TOOL, TOOLS } from './tools/index.js';
 import { ToolError, describeIssues, toToolDefinition } from './tools/tool.js';
 import type { Tool, ToolContext, ToolResult } from './tools/tool.js';
@@ -25,6 +25,7 @@ import type {
   AgentOutcome,
   AgentRunInput,
   AgentUsage,
+  NativeRuntimeOptions,
 } from './types.js';
 
 /** Invalid `finish` results tolerated before the step fails: one chance to fix it. */
@@ -47,7 +48,10 @@ function failure(code: AgentErrorCode, message: string, details?: JsonValue): St
 }
 
 /** The native agent loop (docs/architecture.md section 11). */
-export async function runAgentLoop(llm: LlmClient, input: AgentRunInput): Promise<AgentOutcome> {
+export async function runAgentLoop(
+  { llm, onToolError }: NativeRuntimeOptions,
+  input: AgentRunInput,
+): Promise<AgentOutcome> {
   const { agent, limits } = input;
   const usage: AgentUsage = { iterations: 0, inputTokens: 0, outputTokens: 0, costUsd: 0 };
 
@@ -76,7 +80,7 @@ export async function runAgentLoop(llm: LlmClient, input: AgentRunInput): Promis
   ];
   const token = randomBytes(8).toString('hex');
   const system = buildSystemPrompt(agent.systemPrompt, token);
-  const messages: Message[] = [{ role: 'user', content: buildTaskMessage(input.task) }];
+  const messages: Message[] = [{ role: 'user', content: buildTaskMessage(input.task, token) }];
   const context: ToolContext = {
     sandbox: input.sandbox,
     permissions: agent.permissions,
@@ -104,7 +108,7 @@ export async function runAgentLoop(llm: LlmClient, input: AgentRunInput): Promis
       });
       const assistant: (TextPart | ToolCallPart)[] = [];
       if (response.text !== '') assistant.push({ type: 'text', text: response.text });
-      assistant.push(...response.toolCalls);
+      assistant.push(...response.toolCalls.map(forHistory));
       // An empty assistant turn is refused by some providers; the nudge below follows instead.
       if (assistant.length > 0) messages.push({ role: 'assistant', content: assistant });
 
@@ -148,7 +152,7 @@ export async function runAgentLoop(llm: LlmClient, input: AgentRunInput): Promis
         // Over the budget, nothing else runs; only a valid `finish` above can still end well.
         if (overBudget) continue;
 
-        const result = await executeTool(tools, call, context);
+        const result = await executeTool(tools, call, context, onToolError);
         await input.onEvent(toolEvent(iteration, call, result, callStarted));
         results.push(toResultPart(call, result, token));
       }
@@ -269,6 +273,7 @@ async function executeTool(
   tools: Map<string, Tool>,
   call: ToolCallPart,
   context: ToolContext,
+  onToolError: NativeRuntimeOptions['onToolError'],
 ): Promise<ToolResult> {
   const tool = tools.get(call.name);
   if (!tool) {
@@ -292,6 +297,7 @@ async function executeTool(
       return { output: error.message, isError: true };
     }
     // Unexpected errors may carry host details; the model only learns that the tool broke.
+    onToolError?.(error, { tool: call.name, callId: call.id });
     return { output: `The ${call.name} tool failed unexpectedly.`, isError: true };
   }
 }
@@ -306,6 +312,17 @@ function costLimit(usage: AgentUsage, max: number): StepFailure {
     `The step cost ${usage.costUsd.toFixed(4)} USD, over its limit of ${max} USD.`,
     { costUsd: usage.costUsd, maxCostUsd: max },
   );
+}
+
+/**
+ * The tool call as kept in the conversation. Providers require an object as tool input
+ * (Anthropic refuses anything else), so input that is not one, e.g. the raw text of broken
+ * JSON, is replaced by `{}`; the tool result already tells the model what was wrong.
+ */
+function forHistory(call: ToolCallPart): ToolCallPart {
+  const input = call.input;
+  const isObject = typeof input === 'object' && input !== null && !Array.isArray(input);
+  return isObject ? call : { ...call, input: {} };
 }
 
 function toJson(value: unknown): JsonValue {
@@ -332,7 +349,7 @@ function toResultPart(call: ToolCallPart, result: ToolResult, token: string): To
     type: 'tool-result',
     callId: call.id,
     name: call.name,
-    output: wrapToolOutput(call.name, truncateToolResult(result.output), token),
+    output: wrapData(`tool=${call.name}`, truncateToolResult(result.output), token),
     isError: result.isError ?? false,
   };
 }

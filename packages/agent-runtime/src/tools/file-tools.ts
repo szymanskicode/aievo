@@ -2,6 +2,7 @@ import path from 'node:path';
 
 import { z } from 'zod';
 
+import { matchesPath } from './glob.js';
 import { resolveToolPath, resolveWritablePath } from './paths.js';
 import { ToolError, defineTool } from './tool.js';
 
@@ -26,7 +27,7 @@ export const listFilesTool = defineTool({
     const files = await context.sandbox.listFiles(target.absolute);
     const matching = glob
       ? files.filter((file) =>
-          path.posix.matchesGlob(
+          matchesPath(
             target.relative === '.' ? file : path.posix.relative(target.relative, file),
             glob,
           ),

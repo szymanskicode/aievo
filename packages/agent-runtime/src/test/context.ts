@@ -7,7 +7,13 @@ export function toolContext(sandbox: Sandbox, overrides: Partial<ToolContext> = 
   return {
     sandbox,
     permissions: { writeGlobs: ['**'] },
-    commands: { allowed: ['npm install', 'npm test', 'npm run lint'] },
+    commands: {
+      allowed: [
+        { command: 'npm install', allowArgs: false },
+        { command: 'npm test', allowArgs: true },
+        { command: 'npm run lint', allowArgs: true },
+      ],
+    },
     git: { baseRef: 'origin/main' },
     limits: { ...DEFAULT_LIMITS, commandTimeoutMs: 60_000 },
     signal: new AbortController().signal,

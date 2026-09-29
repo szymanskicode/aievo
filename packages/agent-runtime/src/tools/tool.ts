@@ -2,13 +2,13 @@ import type { ToolDefinition } from '@aievo/llm';
 import type { Sandbox } from '@aievo/sandbox';
 import { z } from 'zod';
 
-import type { AgentPermissions, Limits } from '../types.js';
+import type { AgentPermissions, AllowedCommand, Limits } from '../types.js';
 
 /** What a tool may use; permissions are checked by the tools themselves, not by the prompt. */
 export interface ToolContext {
   sandbox: Sandbox;
   permissions: AgentPermissions;
-  commands: { allowed: string[] };
+  commands: { allowed: AllowedCommand[] };
   git: { baseRef: string };
   limits: Limits;
   signal: AbortSignal;

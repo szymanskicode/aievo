@@ -44,11 +44,20 @@ describe('list_files', () => {
     await put('src/a.test.ts', '');
     await put('src/lib/b.ts', '');
     await put('.git/config', '');
+    await put('.github/workflows/ci.yml', '');
   });
 
   it('lists every file without .git', async () => {
     expect((await run(listFilesTool, {})).output).toBe(
-      ['README.md', 'src/a.test.ts', 'src/a.ts', 'src/lib/b.ts'].join('\n'),
+      ['.github/workflows/ci.yml', 'README.md', 'src/a.test.ts', 'src/a.ts', 'src/lib/b.ts'].join(
+        '\n',
+      ),
+    );
+  });
+
+  it('matches dotfiles with a glob', async () => {
+    expect((await run(listFilesTool, { glob: '**/*.yml' })).output).toBe(
+      '.github/workflows/ci.yml',
     );
   });
 

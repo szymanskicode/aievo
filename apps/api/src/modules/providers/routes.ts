@@ -7,7 +7,7 @@ import {
   upsertDiscoveredModels,
 } from '@aievo/db';
 import type { ProviderPatch } from '@aievo/db';
-import { listModels as discoverModels } from '@aievo/llm';
+import { discoverModels } from '@aievo/llm';
 import {
   createProviderSchema,
   idParamsSchema,

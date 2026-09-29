@@ -19,26 +19,13 @@ import { useMoveTask } from '@/features/tasks/queries';
 
 import { boardAnnouncements, boardInstructions } from './board-announcements';
 import { groupByStatus, moveTask, resolveDrop } from './board-model';
-import type { DropTarget } from './board-model';
 import { BoardColumn } from './BoardColumn';
+import { dropTargetOf } from './drop-target';
 import { TaskCardPreview } from './TaskCard';
 
 interface BoardProps {
   projectId: string;
   tasks: Schemas['Task'][];
-}
-
-/** Reads where a drag ended from the data that columns and cards attach to dnd-kit. */
-function dropTargetOf({ active, over }: DragEndEvent): DropTarget | null {
-  if (!over) return null;
-  const data = over.data.current as { type?: string; status?: TaskStatus } | undefined;
-  if (data?.type === 'column' && data.status) return { kind: 'column', status: data.status };
-
-  const dragged = active.rect.current.translated;
-  const placeAfter = dragged
-    ? dragged.top + dragged.height / 2 > over.rect.top + over.rect.height / 2
-    : false;
-  return { kind: 'task', taskId: String(over.id), placeAfter };
 }
 
 export function Board({ projectId, tasks }: BoardProps) {

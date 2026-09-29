@@ -21,6 +21,16 @@
       "dependsOn": ["^build", "@aievo/db#test"],
       "env": ["DATABASE_URL_TEST"]
     },
+    "test:coverage": {
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**"],
+      "env": ["DATABASE_URL_TEST"]
+    },
+    "@aievo/api#test:coverage": {
+      "dependsOn": ["^build", "@aievo/db#test:coverage"],
+      "outputs": ["coverage/**"],
+      "env": ["DATABASE_URL_TEST"]
+    },
     "dev": {
       "dependsOn": ["^build"],
       "cache": false,

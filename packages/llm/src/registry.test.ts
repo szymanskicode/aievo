@@ -5,7 +5,7 @@ import { HttpResponse, delay, http } from 'msw';
 import { describe, expect, it } from 'vitest';
 
 import { ProviderError } from './errors.js';
-import { listModels, providerRegistry } from './registry.js';
+import { discoverModels, providerRegistry } from './registry.js';
 import { useMockProviders } from './test/msw.js';
 import type { ProviderCredentialInput } from './types.js';
 
@@ -48,7 +48,7 @@ describe('providerRegistry', () => {
   });
 });
 
-describe('listModels: anthropic', () => {
+describe('discoverModels: anthropic', () => {
   it('authenticates with the key and follows pagination', async () => {
     const seen: { key: string | null; version: string | null; after: string | null }[] = [];
     server.use(
@@ -80,7 +80,7 @@ describe('listModels: anthropic', () => {
       }),
     );
 
-    const models = await listModels(anthropic);
+    const models = await discoverModels(anthropic);
 
     expect(seen).toEqual([
       { key: fakeKey, version: '2023-06-01', after: null },
@@ -121,7 +121,7 @@ describe('listModels: anthropic', () => {
       }),
     );
 
-    const error = await providerError(listModels(anthropic));
+    const error = await providerError(discoverModels(anthropic));
 
     expect(error.kind).toBe('bad_response');
     expect(requests).toBe(20);
@@ -134,7 +134,7 @@ describe('listModels: anthropic', () => {
       ),
     );
 
-    const models = await listModels({
+    const models = await discoverModels({
       ...anthropic,
       baseUrl: 'https://proxy.example.test/anthropic',
     });
@@ -152,7 +152,7 @@ describe('listModels: anthropic', () => {
       ),
     );
 
-    const error = await providerError(listModels(anthropic));
+    const error = await providerError(discoverModels(anthropic));
 
     expect(error.kind).toBe('unauthorized');
     expect(error.status).toBe(401);
@@ -160,12 +160,12 @@ describe('listModels: anthropic', () => {
   });
 
   it('fails without a request when the key is missing', async () => {
-    const error = await providerError(listModels({ ...anthropic, apiKey: null }));
+    const error = await providerError(discoverModels({ ...anthropic, apiKey: null }));
     expect(error.kind).toBe('unauthorized');
   });
 });
 
-describe('listModels: openai', () => {
+describe('discoverModels: openai', () => {
   it('sends a bearer token and disables non-chat models', async () => {
     let authorization: string | null = null;
     server.use(
@@ -183,7 +183,7 @@ describe('listModels: openai', () => {
       }),
     );
 
-    const models = await listModels(openai);
+    const models = await discoverModels(openai);
 
     expect(authorization).toBe(`Bearer ${fakeKey}`);
     expect(models.map((m) => [m.modelId, m.enabled])).toEqual([
@@ -203,7 +203,7 @@ describe('listModels: openai', () => {
   });
 });
 
-describe('listModels: openai-compatible', () => {
+describe('discoverModels: openai-compatible', () => {
   it('lists Ollama models without an Authorization header', async () => {
     let authorization: string | null = 'not checked';
     server.use(
@@ -216,7 +216,7 @@ describe('listModels: openai-compatible', () => {
       }),
     );
 
-    const models = await listModels(ollama);
+    const models = await discoverModels(ollama);
 
     expect(authorization).toBeNull();
     expect(models.map((m) => m.modelId)).toEqual(['llama3.2:latest']);
@@ -241,7 +241,7 @@ describe('listModels: openai-compatible', () => {
       ),
     );
 
-    const models = await listModels({
+    const models = await discoverModels({
       type: 'openai-compatible',
       apiKey: fakeKey,
       baseUrl: 'https://router.example.test/api/v1',
@@ -265,7 +265,7 @@ describe('listModels: openai-compatible', () => {
   });
 });
 
-describe('listModels: failures', () => {
+describe('discoverModels: failures', () => {
   const url = 'http://127.0.0.1:11434/v1/models';
 
   it.each([
@@ -278,7 +278,7 @@ describe('listModels: failures', () => {
   ] as const)('maps HTTP %i to %s', async (status, kind) => {
     server.use(http.get(url, () => HttpResponse.json({ secret: 'body' }, { status })));
 
-    const error = await providerError(listModels(ollama));
+    const error = await providerError(discoverModels(ollama));
 
     expect(error.kind).toBe(kind);
     expect(error.message).not.toContain('secret');
@@ -301,7 +301,7 @@ describe('listModels: failures', () => {
       }),
     );
 
-    const error = await providerError(listModels(anthropic));
+    const error = await providerError(discoverModels(anthropic));
 
     expect(error.kind).toBe('bad_response');
     expect(error.status).toBe(302);
@@ -310,10 +310,10 @@ describe('listModels: failures', () => {
 
   it('rejects a body that is not JSON or not a model list', async () => {
     server.use(http.get(url, () => HttpResponse.text('<html>proxy error</html>')));
-    expect((await providerError(listModels(ollama))).kind).toBe('bad_response');
+    expect((await providerError(discoverModels(ollama))).kind).toBe('bad_response');
 
     server.use(http.get(url, () => HttpResponse.json({ models: [] })));
-    expect((await providerError(listModels(ollama))).kind).toBe('bad_response');
+    expect((await providerError(discoverModels(ollama))).kind).toBe('bad_response');
   });
 
   it('times out on a slow provider', async () => {
@@ -324,19 +324,19 @@ describe('listModels: failures', () => {
       }),
     );
 
-    const error = await providerError(listModels(ollama, { timeoutMs: 50 }));
+    const error = await providerError(discoverModels(ollama, { timeoutMs: 50 }));
     expect(error.kind).toBe('timeout');
   });
 
   it('never reaches the network for a request without a mock', async () => {
     // The real api.openai.com would answer 401 (`unauthorized`); msw must stop it first.
-    const error = await providerError(listModels(openai));
+    const error = await providerError(discoverModels(openai));
     expect(error.kind).toBe('network');
   });
 
   it('reports an unreachable provider', async () => {
     server.use(http.get(url, () => HttpResponse.error()));
-    expect((await providerError(listModels(ollama))).kind).toBe('network');
+    expect((await providerError(discoverModels(ollama))).kind).toBe('network');
   });
 
   it('passes a cancellation by the caller through', async () => {
@@ -347,7 +347,7 @@ describe('listModels: failures', () => {
       }),
     );
     const controller = new AbortController();
-    const pending = listModels(ollama, { signal: controller.signal });
+    const pending = discoverModels(ollama, { signal: controller.signal });
     controller.abort();
 
     await expect(pending).rejects.not.toBeInstanceOf(ProviderError);

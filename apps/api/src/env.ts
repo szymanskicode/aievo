@@ -2,7 +2,6 @@ import { MasterKeyError, parseMasterKey } from '@aievo/shared/crypto';
 import { z } from 'zod';
 
 const envSchema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   API_PORT: z.coerce.number().int().positive().max(65535).default(3001),
   // Default matches docker-compose.yml (local credentials, not a secret).
   DATABASE_URL: z.url().default('postgresql://aievo:aievo@127.0.0.1:5432/aievo'),

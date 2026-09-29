@@ -16,7 +16,7 @@ Instrukcja krok po kroku: od pustego folderu do ukończonego etapu 1 (projekty i
 
 ## Krok 0: przygotuj narzędzia (jednorazowo)
 
-1. **Node.js 22 LTS.** Sprawdź: `node -v` pokazuje `v22.x`.
+1. **Node.js 24.** Sprawdź: `node -v` pokazuje `v24.x`.
 2. **pnpm** przez Corepack: `corepack enable`. Sprawdź: `pnpm -v`.
 3. **Docker Desktop** (Windows, macOS) albo Docker Engine z Compose (Linux). Sprawdź: `docker compose version`. Na Windows pracuj w WSL 2, bo to później ułatwi sandboxy.
 4. **Git** i konto **GitHub**.

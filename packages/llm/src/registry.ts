@@ -25,7 +25,7 @@ export const providerRegistry: Readonly<Record<ProviderType, ProviderTypeDefinit
  * Fetches the models available with this credential. Doubles as the connection test:
  * it fails with a `ProviderError` when the key or the base URL is wrong.
  */
-export function listModels(
+export function discoverModels(
   credential: ProviderCredentialInput,
   options?: RequestOptions,
 ): Promise<DiscoveredModel[]> {

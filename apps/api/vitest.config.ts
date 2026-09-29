@@ -16,5 +16,11 @@ export default defineConfig({
     globalSetup: ['src/test/global-setup.ts'],
     // All files share one database, so they must not run concurrently.
     fileParallelism: false,
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.ts'],
+      exclude: ['src/**/*.test.ts', 'src/test/**'],
+      reporter: ['text', 'json-summary', 'html'],
+    },
   },
 });

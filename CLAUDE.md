@@ -6,15 +6,16 @@ Pełna architektura: `docs/architecture.md`. Czytaj z niej tylko sekcje potrzebn
 
 ## Aktualny etap
 
-**Etap 1: Fundament** (roadmapa w sekcji 17 `docs/architecture.md`).
-Cel etapu: monorepo, baza, REST API, UI projektów i tasków, rejestr dostawców modeli. Warunek ukończenia: task utworzony w UI jest zapisany w bazie, a wszystkie testy przechodzą.
+**Etap 2: Pierwszy agent** (roadmapa w sekcji 17 `docs/architecture.md`). Etap 1 zamknięty jako `v0.1.0`.
+Cel etapu: token GitHub (PAT) i kreator projektu (istniejące repo albo nowe z szablonu), worker z pg-boss, sandbox Docker z klonem repo i gałęzią taska, `LlmClient` na Vercel AI SDK, AgentRuntime native z narzędziami (list_files, read_file, search_code, edit_file, run_command), agent Programista (commit, push, PR), zapis stepów i tool_calli z prostą listą kroków w UI.
+Warunek ukończenia: prosty task kończy się PR-em otwartym przez agenta na prawdziwym repo, a wszystkie testy przechodzą.
 
-Nie buduj niczego z późniejszych etapów (worker, sandbox, agenci, pipeline, GitHub). Jeśli coś z nich wydaje się potrzebne, zatrzymaj się i zapytaj.
+Nie buduj niczego z późniejszych etapów (silnik pipeline'u, Inspektor, Doktor, SSE, limity kosztów, Tester, podgląd, Studio). Jeśli coś z nich wydaje się potrzebne, zatrzymaj się i zapytaj.
 
 ## Stack (decyzje podjęte, nie zmieniaj bez pytania)
 
 - Monorepo: pnpm workspaces + Turborepo, TypeScript w trybie strict, Node.js 24.
-- Frontend `apps/web`: React + Vite, TanStack Router, TanStack Query, Zustand, Tailwind CSS + shadcn/ui, React Hook Form + Zod.
+- Frontend `apps/web`: React + Vite, TanStack Router, TanStack Query, Zustand (dodawany, gdy pojawi się stan UI spoza URL i cache zapytań), Tailwind CSS + shadcn/ui, React Hook Form + Zod.
 - API `apps/api`: Express 5, pełne REST, OpenAPI generowane ze schematów Zod, SSE dla zdarzeń na żywo (od etapu 3), logi pino.
 - Baza `packages/db`: PostgreSQL 16 + Drizzle ORM (migracje w repo). Kolejka w późniejszych etapach: pg-boss (bez Redisa).
 - Modele `packages/llm`: własny interfejs `LlmClient` na Vercel AI SDK, rejestr typów dostawców (anthropic, openai, openai-compatible).
@@ -57,11 +58,12 @@ pnpm dev              # api + web w trybie dev
 pnpm typecheck
 pnpm lint
 pnpm test             # wszystkie testy
+pnpm test:coverage    # testy z pokryciem, raport per pakiet
 pnpm test:e2e         # Playwright
 pnpm build
 ```
 
-Komendy powstają w pierwszym prompcie etapu 1; jeśli któraś nie działa, napraw ją, zamiast ją omijać.
+Jeśli któraś komenda nie działa, napraw ją, zamiast ją omijać.
 
 ## Definicja „gotowe” dla zadania
 

@@ -108,7 +108,7 @@ Całość to jedno monorepo w TypeScript (pnpm workspaces + Turborepo), z typami
 | Edytory | Monaco Editor | Edycja promptów, skilli, konfiguracji i podgląd diffów |
 | Graf pipeline'u | React Flow | Wizualny edytor kroków i przejść |
 | Formularze | React Hook Form + Zod | Te same schematy Zod walidowane na froncie i backendzie |
-| API | Node.js 22, Express 5 | Znany framework, duży ekosystem middleware; zdarzenia runów przez SSE, walidacja Zod jako middleware |
+| API | Node.js 24, Express 5 | Znany framework, duży ekosystem middleware; zdarzenia runów przez SSE, walidacja Zod jako middleware |
 | Kontrakt API | Pełne REST + OpenAPI generowane ze schematów Zod | Dokumentacja API i typowany klient frontendu z jednego źródła (np. zod-to-openapi + openapi-typescript) |
 | Baza | PostgreSQL + Drizzle ORM | Relacje + kolumny JSONB na konfiguracje |
 | Wyszukiwanie w kontekście | pgvector (od etapu 6) | Wyszukiwanie semantyczne po kodzie i dokumentach |
@@ -700,6 +700,7 @@ Decyzje startowe są podjęte; zmiana którejkolwiek z nich wymaga aktualizacji 
 | Model wdrożenia | Self-hosted, bez SaaS | Mniejszy zakres, kod i klucze zostają u Ciebie | 1 |
 | Użytkownicy | Jeden, bez logowania; `workspaceId` w tabelach | Krótszy etap 1, furtka na mały zespół | 4, 5, 15 |
 | Backend | Express 5 | Znany stack, duży ekosystem | 3, 4 |
+| Node.js | 24 (zamiast pierwotnie planowanej 22 LTS), zapisane w `.nvmrc` i `engines` | Aktualna wersja LTS w chwili startu etapu 1; zmiana podjęta w etapie 1 | 4 |
 | Kontrakt API | Pełne REST + OpenAPI ze schematów Zod | Standard, łatwy do użycia przez inne klienty (np. CLI) | 4, 13 |
 | Zdarzenia na żywo | SSE | Ruch tylko serwer → przeglądarka, prostsze niż WebSocket | 3, 13, 14 |
 | Kolejka | pg-boss + LISTEN/NOTIFY | Jedna baza zamiast PostgreSQL i Redisa | 3, 4 |

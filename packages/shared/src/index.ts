@@ -129,8 +129,16 @@ export type { TemplateDto, TemplateManifest, TemplateManifestInput } from './sch
 export { setupStatusSchema } from './schemas/setup.js';
 export type { SetupStatus } from './schemas/setup.js';
 
-export { TOOL_RESULT_MAX_CHARS, truncateToolResult } from './schemas/run.js';
-export type { JsonValue } from './schemas/run.js';
+export {
+  ACTIVE_RUN_STATUSES,
+  FINAL_RUN_STATUSES,
+  TOOL_RESULT_MAX_CHARS,
+  isFinalRunStatus,
+  runErrorSchema,
+  runSchema,
+  truncateToolResult,
+} from './schemas/run.js';
+export type { JsonValue, RunDto, RunError } from './schemas/run.js';
 
 export { apiErrorSchema, idParamsSchema } from './schemas/common.js';
 export type { ApiErrorResponse, IdParams } from './schemas/common.js';

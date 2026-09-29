@@ -1,4 +1,5 @@
 import type { Db } from '@aievo/db';
+import type { RunQueue } from '@aievo/queue';
 import type { SecretBox } from '@aievo/shared/crypto';
 import type { Request, RequestHandler, Response, Router } from 'express';
 import type { z } from 'zod';
@@ -42,6 +43,8 @@ export interface RouteContext {
   db: Db;
   /** Encrypts and decrypts provider keys; see `@aievo/shared/crypto`. */
   secretBox: SecretBox;
+  /** Hands runs over to the worker. */
+  queue: RunQueue;
 }
 
 export interface PublicHandlerInput<P, Q, B> extends RouteContext {

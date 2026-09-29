@@ -21,6 +21,14 @@
       "dependsOn": ["^build", "@aievo/db#test"],
       "env": ["DATABASE_URL_TEST"]
     },
+    "@aievo/queue#test": {
+      "dependsOn": ["^build", "@aievo/api#test"],
+      "env": ["DATABASE_URL_TEST"]
+    },
+    "@aievo/worker#test": {
+      "dependsOn": ["^build", "@aievo/queue#test"],
+      "env": ["DATABASE_URL_TEST"]
+    },
     "test:coverage": {
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"],
@@ -28,6 +36,16 @@
     },
     "@aievo/api#test:coverage": {
       "dependsOn": ["^build", "@aievo/db#test:coverage"],
+      "outputs": ["coverage/**"],
+      "env": ["DATABASE_URL_TEST"]
+    },
+    "@aievo/queue#test:coverage": {
+      "dependsOn": ["^build", "@aievo/api#test:coverage"],
+      "outputs": ["coverage/**"],
+      "env": ["DATABASE_URL_TEST"]
+    },
+    "@aievo/worker#test:coverage": {
+      "dependsOn": ["^build", "@aievo/queue#test:coverage"],
       "outputs": ["coverage/**"],
       "env": ["DATABASE_URL_TEST"]
     },
@@ -43,6 +61,11 @@
     },
     "test:templates": {
       "dependsOn": ["^build"],
+      "cache": false
+    },
+    "test:docker": {
+      "dependsOn": ["^build"],
+      "env": ["AIEVO_SANDBOX_IMAGE", "AIEVO_SANDBOX_USER"],
       "cache": false
     },
     "test:e2e": {

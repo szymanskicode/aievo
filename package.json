@@ -19,11 +19,13 @@
     "format:check": "prettier --check .",
     "test:e2e": "turbo run test:e2e",
     "test:templates": "turbo run test:templates",
+    "test:docker": "turbo run test:docker",
     "db:generate": "pnpm --filter @aievo/db db:generate",
     "db:migrate": "pnpm --filter @aievo/db db:migrate",
     "db:seed": "pnpm --filter @aievo/db db:seed",
     "openapi:generate": "pnpm --filter @aievo/api openapi:generate",
-    "api-client:generate": "pnpm --filter @aievo/api-client generate"
+    "api-client:generate": "pnpm --filter @aievo/api-client generate",
+    "sandbox:build": "docker build -t aievo-sandbox-node:1 docker/sandbox-images/node"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

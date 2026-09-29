@@ -8,6 +8,7 @@ import { healthRoutes } from './modules/health/routes.js';
 import { modelRoutes } from './modules/models/routes.js';
 import { projectRoutes } from './modules/projects/routes.js';
 import { providerRoutes } from './modules/providers/routes.js';
+import { runRoutes } from './modules/runs/routes.js';
 import { setupRoutes } from './modules/setup/routes.js';
 import { taskRoutes } from './modules/tasks/routes.js';
 import { templateRoutes } from './modules/templates/routes.js';
@@ -41,6 +42,7 @@ export const apiRoutes: readonly Route[] = [
   ...healthRoutes,
   ...projectRoutes,
   ...taskRoutes,
+  ...runRoutes,
   ...providerRoutes,
   ...modelRoutes,
   ...gitCredentialRoutes,

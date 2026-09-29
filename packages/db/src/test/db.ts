@@ -80,9 +80,13 @@ export async function resetDb(db: Db): Promise<void> {
   await db.execute(sql`TRUNCATE TABLE ${tables} CASCADE`);
 }
 
-/** Drops everything (including drizzle's migration journal) so migrations run from zero. */
+/**
+ * Drops everything (including drizzle's migration journal and the pg-boss queue schema) so
+ * migrations run from zero.
+ */
 export async function dropAll(db: Db): Promise<void> {
   await db.execute(sql`DROP SCHEMA IF EXISTS drizzle CASCADE`);
+  await db.execute(sql`DROP SCHEMA IF EXISTS pgboss CASCADE`);
   await db.execute(sql`DROP SCHEMA IF EXISTS public CASCADE`);
   await db.execute(sql`CREATE SCHEMA public`);
 }

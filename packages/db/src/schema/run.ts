@@ -36,6 +36,8 @@ export const run = pgTable(
     tokensOut: tokens(),
     // Why the run failed: `{ code, message, ... }`, never secrets or raw provider output.
     error: jsonb().$type<JsonValue>(),
+    // Set by `POST /runs/:id/cancel` while a worker owns the run; the worker notices and stops.
+    cancelRequestedAt: timestamp({ withTimezone: true }),
     startedAt: timestamp({ withTimezone: true }),
     endedAt: timestamp({ withTimezone: true }),
     createdAt: createdAt(),

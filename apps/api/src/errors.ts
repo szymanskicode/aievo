@@ -41,7 +41,7 @@ export function notFound(path: string): ApiError {
 }
 
 export function resourceNotFound(
-  entity: 'Project' | 'Task' | 'Provider' | 'Model' | 'Git credential',
+  entity: 'Project' | 'Task' | 'Run' | 'Provider' | 'Model' | 'Git credential',
 ): ApiError {
   return new ApiError(404, 'not_found', `${entity} not found`);
 }

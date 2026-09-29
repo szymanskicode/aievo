@@ -8,3 +8,8 @@ allowBuilds:
   esbuild: true
   # Only copies the browser service worker; tests use msw in Node, so it is not needed.
   msw: false
+  # Pulled in by dockerode (Docker over SSH, gRPC). The worker talks to the local socket, and
+  # ssh2 works without its optional native crypto addon, so none of them need to build.
+  cpu-features: false
+  protobufjs: false
+  ssh2: false

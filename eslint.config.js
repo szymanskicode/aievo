@@ -36,7 +36,7 @@ export default tseslint.config(
 
   // Node-side code.
   {
-    files: ['apps/api/**/*.ts', 'packages/**/*.ts', '*.js', '*.ts'],
+    files: ['apps/api/**/*.ts', 'apps/worker/**/*.ts', 'packages/**/*.ts', '*.js', '*.ts'],
     languageOptions: {
       globals: globals.node,
     },

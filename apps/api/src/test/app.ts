@@ -10,6 +10,7 @@ import type {
   Task,
 } from '@aievo/db';
 import { createWorkspace, getTestDb, resetDb } from '@aievo/db/testing';
+import type { RunQueue } from '@aievo/queue';
 import { createSecretBox, keyHint } from '@aievo/shared/crypto';
 import type { SecretBox } from '@aievo/shared/crypto';
 import type { Express } from 'express';
@@ -17,6 +18,25 @@ import type { Express } from 'express';
 import { createApp } from '../app.js';
 
 export const MISSING_ID = '00000000-0000-4000-8000-00000000dead';
+
+/** Records the runs handed to the queue instead of sending them to pg-boss. */
+export interface FakeRunQueue extends RunQueue {
+  enqueued: string[];
+  /** When set, `enqueueRun` rejects with it. */
+  failWith?: Error;
+}
+
+export function fakeRunQueue(): FakeRunQueue {
+  const queue: FakeRunQueue = {
+    enqueued: [],
+    enqueueRun(runId) {
+      if (queue.failWith) return Promise.reject(queue.failWith);
+      queue.enqueued.push(runId);
+      return Promise.resolve();
+    },
+  };
+  return queue;
+}
 
 export interface TestContext {
   db: Db;
@@ -27,6 +47,7 @@ export interface TestContext {
   otherWorkspaceId: string;
   /** Uses a master key generated for this test run only. */
   secretBox: SecretBox;
+  queue: FakeRunQueue;
 }
 
 /** A secret box with a master key generated for this test run only. */
@@ -41,8 +62,9 @@ export async function setupTestApp(): Promise<TestContext> {
   const workspaceId = await createWorkspace(db, 'Own');
   const otherWorkspaceId = await createWorkspace(db, 'Other');
   const secretBox = testSecretBox();
-  const app = createApp({ db, secretBox, resolveWorkspace: () => workspaceId });
-  return { db, app, workspaceId, otherWorkspaceId, secretBox };
+  const queue = fakeRunQueue();
+  const app = createApp({ db, secretBox, queue, resolveWorkspace: () => workspaceId });
+  return { db, app, workspaceId, otherWorkspaceId, secretBox, queue };
 }
 
 export async function insertProject(db: Db, workspaceId: string, name = 'Demo'): Promise<Project> {

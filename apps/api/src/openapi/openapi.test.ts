@@ -28,6 +28,10 @@ const EXPECTED_OPERATIONS = [
   'GET /api/tasks/{id}',
   'PATCH /api/tasks/{id}',
   'DELETE /api/tasks/{id}',
+  'GET /api/tasks/{id}/runs',
+  'POST /api/tasks/{id}/runs',
+  'GET /api/runs/{id}',
+  'POST /api/runs/{id}/cancel',
   'GET /api/provider-types',
   'GET /api/providers',
   'POST /api/providers',
@@ -147,7 +151,10 @@ describe('OpenAPI document', () => {
 
   it('groups every task operation under the tasks tag', () => {
     const paths = getOpenApiDocument().paths ?? {};
-    const taskOperations = documentedOperations().filter((op) => /\/tasks(\/|$)/.test(op));
+    // Runs of a task live under its path but belong to the runs tag.
+    const taskOperations = documentedOperations().filter(
+      (op) => /\/tasks(\/|$)/.test(op) && !op.endsWith('/runs'),
+    );
 
     expect(taskOperations).toHaveLength(5);
     for (const operation of taskOperations) {

@@ -22,3 +22,22 @@ export {
   createGitHubProvider,
 } from './github/github-provider.js';
 export type { GitHubProviderOptions } from './github/github-provider.js';
+export {
+  AGENT_BRANCH_PREFIX,
+  agentBranchName,
+  isValidAgentBranch,
+  slugify,
+} from './local/branch-name.js';
+export { createLocalGit, redactToken } from './local/local-git.js';
+export type {
+  CloneInput,
+  CommitInput,
+  GitExec,
+  GitExecOptions,
+  GitExecResult,
+  LocalGit,
+  LocalGitOptions,
+  PushInput,
+} from './local/local-git.js';
+export { LocalGitError } from './local/local-git-error.js';
+export type { LocalGitErrorDetails, LocalGitErrorKind } from './local/local-git-error.js';

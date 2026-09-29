@@ -52,3 +52,30 @@ export {
   listGitCredentials,
 } from './repositories/git-credentials.js';
 export type { GitCredential, NewGitCredentialInput } from './repositories/git-credentials.js';
+export {
+  claimRun,
+  createRun,
+  createToolCall,
+  failOrphanedRuns,
+  finishRun,
+  finishStep,
+  getRun,
+  isRunCancelRequested,
+  listRunSteps,
+  listStepToolCalls,
+  listTaskRuns,
+  requestRunCancel,
+  startStep,
+  updateRun,
+} from './repositories/runs.js';
+export type {
+  CancelOutcome,
+  ClaimedRun,
+  ClaimResult,
+  NewStepInput,
+  NewToolCallInput,
+  Run,
+  RunPatch,
+  Step,
+  ToolCall,
+} from './repositories/runs.js';

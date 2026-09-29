@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { taskPrioritySchema, taskStatusSchema, taskTypeSchema } from './enums.js';
+import { runSummarySchema } from './run.js';
 
 /**
  * Body of `POST /projects/:id/tasks`. Fields have no defaults here: the repository
@@ -49,6 +50,8 @@ export const taskSchema = z
     labels: z.array(z.string()),
     position: z.number(),
     parentId: z.uuid().nullable(),
+    /** The newest run of the task, or `null` when it has never run. */
+    latestRun: runSummarySchema.nullable(),
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
   })

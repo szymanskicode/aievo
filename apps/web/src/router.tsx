@@ -28,6 +28,8 @@ const pages = {
   board: () => import('@/features/board/BoardRoute'),
   providers: () => import('@/features/providers/ProvidersPage'),
   githubSettings: () => import('@/features/github/GitHubSettingsPage'),
+  agentModels: () => import('@/features/agent-models/AgentModelsPage'),
+  run: () => import('@/features/runs/RunPage'),
 };
 
 export async function preloadPages(): Promise<void> {
@@ -77,6 +79,12 @@ const boardRoute = createRoute({
   component: lazyRouteComponent(pages.board, 'BoardRoute'),
 });
 
+const runRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/runs/$runId',
+  component: lazyRouteComponent(pages.run, 'RunPage'),
+});
+
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/settings',
@@ -100,12 +108,19 @@ const githubSettingsRoute = createRoute({
   component: lazyRouteComponent(pages.githubSettings, 'GitHubSettingsPage'),
 });
 
+const agentModelsRoute = createRoute({
+  getParentRoute: () => settingsRoute,
+  path: '/models',
+  component: lazyRouteComponent(pages.agentModels, 'AgentModelsPage'),
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   projectsRoute,
   newProjectRoute,
   boardRoute,
-  settingsRoute.addChildren([providersRoute, githubSettingsRoute]),
+  runRoute,
+  settingsRoute.addChildren([providersRoute, agentModelsRoute, githubSettingsRoute]),
 ]);
 
 export function createAppRouter(queryClient: QueryClient, history?: RouterHistory) {

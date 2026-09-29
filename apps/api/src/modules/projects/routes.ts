@@ -20,7 +20,7 @@ import { z } from 'zod';
 
 import { GIT_ERROR_STATUSES, resourceNotFound } from '../../errors.js';
 import { defineRoute } from '../../http/route.js';
-import { serializeTask } from '../tasks/serialize.js';
+import { serializeTask, serializeTasks } from '../tasks/serialize.js';
 import { createProjectWithRepo } from './create-project.js';
 import { serializeProject } from './serialize.js';
 
@@ -127,7 +127,7 @@ export const projectRoutes = [
         projectId: params.id,
         ...withoutUndefined(query),
       });
-      return rows.map(serializeTask);
+      return serializeTasks(db, workspaceId, rows);
     },
   ),
 
@@ -147,7 +147,8 @@ export const projectRoutes = [
     async ({ db, workspaceId, params, body }) => {
       const row = await createTask(db, workspaceId, params.id, withoutUndefined(body));
       if (!row) throw resourceNotFound('Project');
-      return serializeTask(row);
+      // A new task has never run.
+      return serializeTask(row, null);
     },
   ),
 ];

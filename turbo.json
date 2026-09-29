@@ -73,7 +73,7 @@
       "cache": false
     },
     "@aievo/web#test:e2e": {
-      "dependsOn": ["^build", "@aievo/api#build"],
+      "dependsOn": ["^build", "@aievo/api#build", "@aievo/worker#build"],
       "env": ["DATABASE_URL_E2E", "CI"],
       "cache": false
     }

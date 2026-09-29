@@ -1,15 +1,18 @@
 import {
   claimRun,
+  createToolCall,
   finishRun,
+  finishStep,
   getRun,
   getTask,
+  startStep,
   updateModel,
   updateProject,
   updateWorkspaceSettings,
 } from '@aievo/db';
 import type { Model, Project, Task } from '@aievo/db';
 import { closeTestDb } from '@aievo/db/testing';
-import { runSchema } from '@aievo/shared';
+import { runSchema, stepSchema, taskSchema } from '@aievo/shared';
 import request from 'supertest';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
@@ -235,5 +238,197 @@ describe('POST /api/runs/:id/cancel', () => {
     expect(again.status).toBe(409);
     expect(again.body.error.code).toBe('run_not_active');
     expect((await request(ctx.app).post(`/api/runs/${MISSING_ID}/cancel`)).status).toBe(404);
+  });
+});
+
+/** The API as the other workspace sees it. */
+const otherWorkspaceApp = () =>
+  createApp({
+    db: ctx.db,
+    secretBox: ctx.secretBox,
+    queue: ctx.queue,
+    resolveWorkspace: () => ctx.otherWorkspaceId,
+  });
+
+/** A claimed run with an `implement` step of `calls` tool calls; the step is left running. */
+async function runWithStep(calls: number) {
+  const run = (await startRun()).body as { id: string };
+  await claimRun(ctx.db, run.id, 1);
+  const step = await startStep(ctx.db, ctx.workspaceId, run.id, {
+    stepKey: 'implement',
+    agentKey: 'coder',
+    agentVersion: 'v1',
+  });
+  if (!step) throw new Error('Step was not started');
+  const toolCalls = [];
+  for (let index = 0; index < calls; index += 1) {
+    toolCalls.push(
+      await createToolCall(ctx.db, ctx.workspaceId, step.id, {
+        tool: 'read_file',
+        args: { path: `file-${index}.ts` },
+        result: `content ${index}`,
+        isError: index === 1,
+        durationMs: 5,
+        exitCode: null,
+      }),
+    );
+  }
+  return { run, step, toolCalls: toolCalls.map((call) => call!) };
+}
+
+describe('GET /api/runs/:id/steps', () => {
+  it('returns the steps with their first tool calls', async () => {
+    const { run, step, toolCalls } = await runWithStep(3);
+
+    const response = await request(ctx.app).get(`/api/runs/${run.id}/steps?toolCallLimit=2`);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveLength(1);
+    expect(stepSchema.safeParse(response.body[0]).success).toBe(true);
+    expect(response.body[0]).toMatchObject({
+      id: step.id,
+      stepKey: 'implement',
+      status: 'running',
+      result: null,
+      error: null,
+      iterations: null,
+      toolCallCount: 3,
+      toolCalls: { nextCursor: toolCalls[1]!.id },
+    });
+    expect(response.body[0].toolCalls.items).toMatchObject([
+      { tool: 'read_file', args: { path: 'file-0.ts' }, isError: false },
+      { args: { path: 'file-1.ts' }, isError: true, result: 'content 1' },
+    ]);
+  });
+
+  it('returns the result the agent finished with and nothing else of the output', async () => {
+    const { run, step } = await runWithStep(0);
+    const result = {
+      summary: 'Added a greeting',
+      changedFiles: ['src/hello.ts'],
+      tests: { commands: ['npm test'], passed: true, summary: '1 passed' },
+      openIssues: [],
+    };
+    await finishStep(ctx.db, ctx.workspaceId, step.id, {
+      status: 'succeeded',
+      output: { result, usage: { iterations: 4, costUsd: 0.1 }, secret: 'internal' },
+    });
+
+    const response = await request(ctx.app).get(`/api/runs/${run.id}/steps`);
+
+    expect(response.body[0]).toMatchObject({ status: 'succeeded', result, iterations: 4 });
+    expect(JSON.stringify(response.body)).not.toContain('internal');
+  });
+
+  it('returns only the code and message of a step error', async () => {
+    const { run, step } = await runWithStep(0);
+    await finishStep(ctx.db, ctx.workspaceId, step.id, {
+      status: 'failed',
+      output: {
+        error: { code: 'iteration_limit', message: 'Too many iterations', raw: 'provider body' },
+        usage: { iterations: 40, costUsd: 1 },
+      },
+    });
+
+    const response = await request(ctx.app).get(`/api/runs/${run.id}/steps`);
+
+    expect(response.body[0].error).toEqual({
+      code: 'iteration_limit',
+      message: 'Too many iterations',
+    });
+    expect(JSON.stringify(response.body)).not.toContain('provider body');
+  });
+
+  it('answers 404 for a missing run and a run of another workspace', async () => {
+    const { run } = await runWithStep(1);
+    const other = otherWorkspaceApp();
+
+    expect((await request(ctx.app).get(`/api/runs/${MISSING_ID}/steps`)).status).toBe(404);
+    expect((await request(other).get(`/api/runs/${run.id}/steps`)).status).toBe(404);
+  });
+
+  it('rejects a page size over the limit', async () => {
+    const { run } = await runWithStep(0);
+
+    const response = await request(ctx.app).get(`/api/runs/${run.id}/steps?toolCallLimit=1000`);
+
+    expect(response.status).toBe(400);
+  });
+});
+
+describe('GET /api/steps/:id/tool-calls', () => {
+  it('pages through the tool calls with the cursor', async () => {
+    const { step, toolCalls } = await runWithStep(3);
+
+    const first = await request(ctx.app).get(`/api/steps/${step.id}/tool-calls?limit=2`);
+    const second = await request(ctx.app).get(
+      `/api/steps/${step.id}/tool-calls?limit=2&after=${first.body.nextCursor}`,
+    );
+
+    expect(first.status).toBe(200);
+    expect(first.body.items.map((call: { id: string }) => call.id)).toEqual([
+      toolCalls[0]!.id,
+      toolCalls[1]!.id,
+    ]);
+    expect(second.body).toMatchObject({ items: [{ id: toolCalls[2]!.id }], nextCursor: null });
+  });
+
+  it('refuses a cursor of another step, or of no tool call, with 400', async () => {
+    const { run, step } = await runWithStep(1);
+    const otherStep = await startStep(ctx.db, ctx.workspaceId, run.id, {
+      stepKey: 'check',
+      agentKey: 'platform',
+      agentVersion: 'v1',
+    });
+    const otherCall = await createToolCall(ctx.db, ctx.workspaceId, otherStep!.id, {
+      tool: 'run_command',
+      args: { command: 'npm test' },
+      result: 'ok',
+      isError: false,
+      durationMs: 5,
+      exitCode: 0,
+    });
+
+    const foreign = await request(ctx.app).get(
+      `/api/steps/${step.id}/tool-calls?after=${otherCall!.id}`,
+    );
+    const missing = await request(ctx.app).get(
+      `/api/steps/${step.id}/tool-calls?after=${MISSING_ID}`,
+    );
+
+    expect(foreign.status).toBe(400);
+    expect(foreign.body.error.code).toBe('invalid_reference');
+    expect(missing.status).toBe(400);
+  });
+
+  it('answers 404 for a step of another workspace', async () => {
+    const { step } = await runWithStep(1);
+    const other = otherWorkspaceApp();
+
+    expect((await request(other).get(`/api/steps/${step.id}/tool-calls`)).status).toBe(404);
+  });
+});
+
+describe('latest run of a task', () => {
+  it('comes with the task in the list, alone and after an update', async () => {
+    const run = (await startRun()).body as { id: string };
+    const latestRun = { id: run.id, status: 'queued', prUrl: null, prNumber: null };
+
+    const list = await request(ctx.app).get(`/api/projects/${project.id}/tasks`);
+    const one = await request(ctx.app).get(`/api/tasks/${task.id}`);
+    const updated = await request(ctx.app)
+      .patch(`/api/tasks/${task.id}`)
+      .send({ title: 'Renamed' });
+
+    expect(list.body[0].latestRun).toEqual(latestRun);
+    expect(one.body.latestRun).toEqual(latestRun);
+    expect(updated.body.latestRun).toEqual(latestRun);
+    expect(taskSchema.safeParse(one.body).success).toBe(true);
+  });
+
+  it('is null for a task that never ran', async () => {
+    const response = await request(ctx.app).get(`/api/tasks/${task.id}`);
+
+    expect(response.body.latestRun).toBeNull();
   });
 });

@@ -5,16 +5,26 @@ import {
   getProject,
   getRun,
   getTask,
+  listFirstToolCallPages,
+  listRunSteps,
+  listStepToolCallPage,
   listTaskRuns,
   requestRunCancel,
 } from '@aievo/db';
-import { idParamsSchema, runSchema } from '@aievo/shared';
+import {
+  idParamsSchema,
+  runSchema,
+  runStepsQuerySchema,
+  stepSchema,
+  toolCallPageSchema,
+  toolCallsQuerySchema,
+} from '@aievo/shared';
 import { z } from 'zod';
 
 import { ApiError, resourceNotFound } from '../../errors.js';
 import { defineRoute } from '../../http/route.js';
 import { assertAgentModelReady, coderPreset } from '../workspace/agent-model.js';
-import { serializeRun } from './serialize.js';
+import { serializeRun, serializeStep, serializeToolCallPage } from './serialize.js';
 
 const tag = 'runs';
 
@@ -111,6 +121,55 @@ export const runRoutes = [
       const row = await getRun(db, workspaceId, params.id);
       if (!row) throw resourceNotFound('Run');
       return serializeRun(row);
+    },
+  ),
+
+  defineRoute(
+    {
+      method: 'get',
+      path: '/runs/:id/steps',
+      summary:
+        'Steps of a run in order, each with its first `toolCallLimit` tool calls; ' +
+        'further ones come from `GET /steps/:id/tool-calls`',
+      tag,
+      params: idParamsSchema,
+      query: runStepsQuerySchema,
+      status: 200,
+      response: z.array(stepSchema),
+      errors: [404],
+    },
+    async ({ db, workspaceId, params, query }) => {
+      if (!(await getRun(db, workspaceId, params.id))) throw resourceNotFound('Run');
+      const steps = await listRunSteps(db, workspaceId, params.id);
+      const pages = await listFirstToolCallPages(db, workspaceId, params.id, query.toolCallLimit);
+      return steps.map((step) => {
+        const { total, ...page } = pages.get(step.id) ?? { items: [], nextCursor: null, total: 0 };
+        return serializeStep(step, total, page);
+      });
+    },
+  ),
+
+  defineRoute(
+    {
+      method: 'get',
+      path: '/steps/:id/tool-calls',
+      summary:
+        'A page of tool calls of a step, in order; pass `nextCursor` of a page as `after` ' +
+        '(400 for a cursor that is not a tool call of the step)',
+      tag,
+      params: idParamsSchema,
+      query: toolCallsQuerySchema,
+      status: 200,
+      response: toolCallPageSchema,
+      errors: [404],
+    },
+    async ({ db, workspaceId, params, query }) => {
+      const page = await listStepToolCallPage(db, workspaceId, params.id, {
+        limit: query.limit,
+        ...(query.after === undefined ? {} : { after: query.after }),
+      });
+      if (!page) throw resourceNotFound('Step');
+      return serializeToolCallPage(page);
     },
   ),
 

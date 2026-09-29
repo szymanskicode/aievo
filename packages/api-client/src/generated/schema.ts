@@ -747,6 +747,123 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/runs/{id}/steps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Steps of a run in order, each with its first `toolCallLimit` tool calls; further ones come from `GET /steps/:id/tool-calls` */
+        get: {
+            parameters: {
+                query?: {
+                    toolCallLimit?: number;
+                };
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Steps of a run in order, each with its first `toolCallLimit` tool calls; further ones come from `GET /steps/:id/tool-calls` */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Step"][];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiError"];
+                    };
+                };
+                /** @description Resource not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/steps/{id}/tool-calls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A page of tool calls of a step, in order; pass `nextCursor` of a page as `after` (400 for a cursor that is not a tool call of the step) */
+        get: {
+            parameters: {
+                query?: {
+                    after?: string;
+                    limit?: number;
+                };
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description A page of tool calls of a step, in order; pass `nextCursor` of a page as `after` (400 for a cursor that is not a tool call of the step) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ToolCallPage"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiError"];
+                    };
+                };
+                /** @description Resource not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/runs/{id}/cancel": {
         parameters: {
             query?: never;
@@ -2066,6 +2183,13 @@ export interface components {
             position: number;
             /** Format: uuid */
             parentId: string | null;
+            latestRun: {
+                /** Format: uuid */
+                id: string;
+                status: components["schemas"]["RunStatus"];
+                prUrl: string | null;
+                prNumber: number | null;
+            } | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -2077,6 +2201,8 @@ export interface components {
         TaskPriority: "low" | "medium" | "high";
         /** @enum {string} */
         TaskStatus: "draft" | "clarifying" | "ready" | "running" | "needs_human" | "in_review" | "done" | "failed" | "cancelled";
+        /** @enum {string} */
+        RunStatus: "queued" | "preparing" | "running" | "committing" | "succeeded" | "failed" | "cancelled";
         CreateTask: {
             title: string;
             description?: string;
@@ -2113,7 +2239,10 @@ export interface components {
             costUsd: number;
             tokensIn: number;
             tokensOut: number;
-            error: components["schemas"]["RunError"];
+            error: {
+                code: string;
+                message: string;
+            } | null;
             /** Format: date-time */
             cancelRequestedAt: string | null;
             /** Format: date-time */
@@ -2123,12 +2252,68 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        Step: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            runId: string;
+            stepKey: string;
+            agentKey: string;
+            iteration: number;
+            status: components["schemas"]["StepStatus"];
+            costUsd: number;
+            tokensIn: number;
+            tokensOut: number;
+            result: {
+                /** @description What changed and why, for the reviewer */
+                summary: string;
+                changedFiles: string[];
+                tests: {
+                    commands: string[];
+                    /** @description Whether all of them passed */
+                    passed: boolean;
+                    /** @description One-line result */
+                    summary: string;
+                };
+                openIssues: string[];
+            } | null;
+            error: {
+                code: string;
+                message: string;
+            } | null;
+            iterations: number | null;
+            toolCallCount: number;
+            toolCalls: components["schemas"]["ToolCallPage"];
+            /** Format: date-time */
+            startedAt: string | null;
+            /** Format: date-time */
+            endedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
         /** @enum {string} */
-        RunStatus: "queued" | "preparing" | "running" | "committing" | "succeeded" | "failed" | "cancelled";
-        RunError: {
-            code: string;
-            message: string;
-        } | null;
+        StepStatus: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+        ToolCallPage: {
+            items: components["schemas"]["ToolCall"][];
+            /** Format: uuid */
+            nextCursor: string | null;
+        };
+        ToolCall: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            stepId: string;
+            tool: string;
+            args: {
+                [key: string]: unknown;
+            };
+            result: string;
+            isError: boolean;
+            durationMs: number;
+            exitCode: number | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
         ProviderTypeInfo: {
             type: components["schemas"]["ProviderType"];
             displayName: string;

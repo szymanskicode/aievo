@@ -114,3 +114,26 @@ Lista punktów do przeniesienia do `docs/architecture.md` (sekcje 10, 11, 18) na
 - **Dokument (sekcje 5, 6):** agent ma `modelRef` (alias z workspace'u), workspace ma „domyślny model per rola”.
 - **Stan faktyczny:** `workspace.settings.agentModels.coder` (id modelu), ustawiane przez `PATCH /api/workspace/settings`. Model musi być włączony, mieć capability z `requiredCapabilities` presetu (`tools`) i cennik (inaczej 422 `model_not_usable`). Start runu bez modelu → 409 `agent_model_missing`/`agent_model_unusable`. Aliasów modeli jeszcze nie ma. Preset agenta leży w `packages/presets/agents/coder/` (plik, nie wersjonowany rekord w bazie); wersja w kroku to hash plików presetu.
 - **Proponowana zmiana:** sekcja 5/6 przy Studio (etap 5): agenci w bazie, aliasy modeli.
+
+## 19. Wywołania narzędzi stronicowane osobnym endpointem (prompt 6)
+
+- **Dokument (sekcja 13):** `GET /runs/:id/steps` zwraca kroki; o stronicowaniu wywołań narzędzi nie ma mowy.
+- **Stan faktyczny:** `GET /api/runs/:id/steps?toolCallLimit=` zwraca kroki z pierwszą stroną wywołań (`toolCalls: { items, nextCursor }`) i ich liczbą (`toolCallCount`). Kolejne strony daje nowy endpoint `GET /api/steps/:id/tool-calls?after=&limit=`. Kursor to id ostatniego wywołania na stronie, a kolejność to `(created_at, id)`, porównywana w SQL, żeby nie tracić mikrosekund. Kursor spoza kroku daje 400 `invalid_reference`. Z `step.output` API zwraca tylko `result` (wynik `finish`), `error { code, message }` i `iterations`.
+- **Proponowana zmiana:** sekcja 13, tabela endpointów (dopisać `GET /steps/:id/tool-calls`).
+
+## 20. Task w API zawiera ostatni run (prompt 6)
+
+- **Stan faktyczny:** DTO taska ma pole `latestRun: { id, status, prUrl, prNumber } | null` (najnowszy run taska), zwracane przez listę, szczegóły i `PATCH`. Karta na tablicy pokazuje z niego znacznik pracy agenta i link do PR, bez osobnego zapytania o runy.
+- **Proponowana zmiana:** sekcja 13 (opis zasobu task) albo sekcja 5, jeśli dokument ma opisywać kształt odpowiedzi.
+
+## 21. Odświeżanie co 3 s zamiast SSE do etapu 3 (prompt 6)
+
+- **Dokument (sekcja 14):** podgląd runu subskrybuje SSE i nie odpytuje API.
+- **Stan faktyczny:** widok runu, lista runów taska i tablica odpytują API co 3 s, ale tylko gdy run jest otwarty (`queued`, `preparing`, `running`, `committing`). Po zakończeniu runu kroki i task są pobierane raz jeszcze. Wyniki narzędzi (do 16 000 znaków każdy) wracają przy każdym odświeżeniu pierwszej strony kroków (domyślnie 100 wywołań w UI).
+- **Proponowana zmiana:** brak. SSE z etapu 3 zastępuje odpytywanie zgodnie z dokumentem. Zapis zostaje, żeby w etapie 3 usunąć `refetchInterval`.
+
+## 22. Worker E2E z fałszywym modelem i GitHubem (prompt 6)
+
+- **Stan faktyczny:** `apps/worker/src/e2e/` składa zależności runnera z prawdziwą kolejką, bazą i pętlą agenta oraz ze skryptowanym `FakeLlmClient`, sandboxem na katalogu, lokalnym gitem bez klonowania i GitHubem, który tylko zapisuje PR. Startuje wyłącznie przy `AIEVO_E2E_FAKES=1` i bazie z nazwą kończącą się na `_test`. Nie wchodzi do builda (`tsconfig.build.json`), a Playwright uruchamia go przez `tsx` jako trzeci serwer.
+- **Kolejność startu E2E:** Playwright uruchamia serwery przed `globalSetup`, więc baza E2E jest przebudowywana w komendzie serwera API (`e2e/reset-db.ts`), zanim wystartują API i worker. Wcześniejszy `e2e/global-setup.ts` usuwał schemat pg-boss, który serwery już utworzyły.
+- **Proponowana zmiana:** sekcja 12 (testy E2E): opis trybu testowego workera.

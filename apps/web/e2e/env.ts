@@ -9,3 +9,9 @@ const DEFAULT_E2E_DATABASE_URL = 'postgresql://aievo:aievo@127.0.0.1:5432/aievo_
 export function e2eDatabaseUrl(): string {
   return process.env.DATABASE_URL_E2E ?? DEFAULT_E2E_DATABASE_URL;
 }
+
+/**
+ * Holds the throwaway master key of an E2E run. Set once by the Playwright config in the
+ * runner process and inherited by its test workers, so seeded secrets match the API's key.
+ */
+export const E2E_MASTER_KEY_ENV = 'AIEVO_E2E_MASTER_KEY';

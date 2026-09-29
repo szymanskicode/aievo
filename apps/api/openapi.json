@@ -793,6 +793,39 @@
             ],
             "format": "uuid"
           },
+          "latestRun": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "status": {
+                "$ref": "#/components/schemas/RunStatus"
+              },
+              "prUrl": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "prNumber": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "status",
+              "prUrl",
+              "prNumber"
+            ]
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -814,6 +847,7 @@
           "labels",
           "position",
           "parentId",
+          "latestRun",
           "createdAt",
           "updatedAt"
         ]
@@ -846,6 +880,18 @@
           "needs_human",
           "in_review",
           "done",
+          "failed",
+          "cancelled"
+        ]
+      },
+      "RunStatus": {
+        "type": "string",
+        "enum": [
+          "queued",
+          "preparing",
+          "running",
+          "committing",
+          "succeeded",
           "failed",
           "cancelled"
         ]
@@ -989,7 +1035,22 @@
             "type": "integer"
           },
           "error": {
-            "$ref": "#/components/schemas/RunError"
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ]
           },
           "cancelRequestedAt": {
             "type": [
@@ -1034,34 +1095,249 @@
           "createdAt"
         ]
       },
-      "RunStatus": {
+      "Step": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "runId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "stepKey": {
+            "type": "string"
+          },
+          "agentKey": {
+            "type": "string"
+          },
+          "iteration": {
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/StepStatus"
+          },
+          "costUsd": {
+            "type": "number"
+          },
+          "tokensIn": {
+            "type": "integer"
+          },
+          "tokensOut": {
+            "type": "integer"
+          },
+          "result": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "summary": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4000,
+                "description": "What changed and why, for the reviewer"
+              },
+              "changedFiles": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "tests": {
+                "type": "object",
+                "properties": {
+                  "commands": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "passed": {
+                    "type": "boolean",
+                    "description": "Whether all of them passed"
+                  },
+                  "summary": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1000,
+                    "description": "One-line result"
+                  }
+                },
+                "required": [
+                  "commands",
+                  "passed",
+                  "summary"
+                ]
+              },
+              "openIssues": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                }
+              }
+            },
+            "required": [
+              "summary",
+              "changedFiles",
+              "tests",
+              "openIssues"
+            ]
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ]
+          },
+          "iterations": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "toolCallCount": {
+            "type": "integer"
+          },
+          "toolCalls": {
+            "$ref": "#/components/schemas/ToolCallPage"
+          },
+          "startedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "endedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "runId",
+          "stepKey",
+          "agentKey",
+          "iteration",
+          "status",
+          "costUsd",
+          "tokensIn",
+          "tokensOut",
+          "result",
+          "error",
+          "iterations",
+          "toolCallCount",
+          "toolCalls",
+          "startedAt",
+          "endedAt",
+          "createdAt"
+        ]
+      },
+      "StepStatus": {
         "type": "string",
         "enum": [
           "queued",
-          "preparing",
           "running",
-          "committing",
           "succeeded",
           "failed",
           "cancelled"
         ]
       },
-      "RunError": {
-        "type": [
-          "object",
-          "null"
-        ],
+      "ToolCallPage": {
+        "type": "object",
         "properties": {
-          "code": {
-            "type": "string"
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolCall"
+            }
           },
-          "message": {
-            "type": "string"
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
           }
         },
         "required": [
-          "code",
-          "message"
+          "items",
+          "nextCursor"
+        ]
+      },
+      "ToolCall": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "stepId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tool": {
+            "type": "string"
+          },
+          "args": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "result": {
+            "type": "string"
+          },
+          "isError": {
+            "type": "boolean"
+          },
+          "durationMs": {
+            "type": "integer"
+          },
+          "exitCode": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "stepId",
+          "tool",
+          "args",
+          "result",
+          "isError",
+          "durationMs",
+          "exitCode",
+          "createdAt"
         ]
       },
       "ProviderTypeInfo": {
@@ -2652,6 +2928,142 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Run"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runs/{id}/steps": {
+      "get": {
+        "summary": "Steps of a run in order, each with its first `toolCallLimit` tool calls; further ones come from `GET /steps/:id/tool-calls`",
+        "tags": [
+          "runs"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "required": false,
+            "name": "toolCallLimit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Steps of a run in order, each with its first `toolCallLimit` tool calls; further ones come from `GET /steps/:id/tool-calls`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Step"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/steps/{id}/tool-calls": {
+      "get": {
+        "summary": "A page of tool calls of a step, in order; pass `nextCursor` of a page as `after` (400 for a cursor that is not a tool call of the step)",
+        "tags": [
+          "runs"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "after",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of tool calls of a step, in order; pass `nextCursor` of a page as `after` (400 for a cursor that is not a tool call of the step)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ToolCallPage"
                 }
               }
             }

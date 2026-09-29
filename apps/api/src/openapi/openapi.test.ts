@@ -31,6 +31,7 @@ const EXPECTED_OPERATIONS = [
   'GET /api/tasks/{id}/runs',
   'POST /api/tasks/{id}/runs',
   'GET /api/runs/{id}',
+  'GET /api/runs/{id}/steps',
   'POST /api/runs/{id}/cancel',
   'GET /api/provider-types',
   'GET /api/providers',
@@ -47,6 +48,7 @@ const EXPECTED_OPERATIONS = [
   'GET /api/github/repos',
   'GET /api/templates',
   'GET /api/setup-status',
+  'GET /api/steps/{id}/tool-calls',
   'GET /api/workspace/settings',
   'PATCH /api/workspace/settings',
 ];

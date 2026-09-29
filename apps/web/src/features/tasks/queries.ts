@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 
 import { api } from '@/api/client';
 import { errorMessage } from '@/api/errors';
+import { RUN_POLL_MS, isOpenRun } from '@/features/runs/run-status';
 
 type Task = Schemas['Task'];
 
@@ -18,6 +19,11 @@ export const tasksQuery = (projectId: string) =>
     queryKey: taskKeys.list(projectId),
     queryFn: ({ signal }) =>
       unwrap(api.GET('/api/projects/{id}/tasks', { params: { path: { id: projectId } }, signal })),
+    // Cards follow the agent's work (status, pull request) while one of them has an open run.
+    refetchInterval: (query) =>
+      query.state.data?.some((task) => task.latestRun && isOpenRun(task.latestRun.status))
+        ? RUN_POLL_MS
+        : false,
   });
 
 export const taskQuery = (id: string) =>

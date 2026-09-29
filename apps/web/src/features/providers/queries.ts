@@ -12,7 +12,10 @@ type Model = Schemas['Model'];
 export const providerKeys = {
   types: ['provider-types'] as const,
   all: ['providers'] as const,
+  /** Every model list, of one provider or of all; a model change invalidates them together. */
+  allLists: ['models'] as const,
   models: (providerId: string) => ['models', { providerId }] as const,
+  allModels: ['models', 'all'] as const,
 };
 
 export const providerTypesQuery = () =>
@@ -55,7 +58,10 @@ export function useDeleteProvider() {
       unwrap(api.DELETE('/api/providers/{id}', { params: { path: { id } } })),
     onSuccess: (_data, id) => {
       queryClient.removeQueries({ queryKey: providerKeys.models(id) });
-      return queryClient.invalidateQueries({ queryKey: providerKeys.all });
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: providerKeys.all }),
+        queryClient.invalidateQueries({ queryKey: providerKeys.allModels }),
+      ]);
     },
   });
 }
@@ -69,6 +75,7 @@ export function useTestProvider(providerId: string) {
       unwrap(api.POST('/api/providers/{id}/test', { params: { path: { id: providerId } } })),
     onSuccess: (result) => {
       queryClient.setQueryData(providerKeys.models(providerId), result.models);
+      return queryClient.invalidateQueries({ queryKey: providerKeys.allModels });
     },
   });
 }
@@ -94,6 +101,7 @@ export function useSetModelEnabled(providerId: string) {
       if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
       toast.error(`Could not update the model: ${errorMessage(error)}`);
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey }),
+    // Also the list of all models, which the Models settings page chooses from.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: providerKeys.allLists }),
   });
 }

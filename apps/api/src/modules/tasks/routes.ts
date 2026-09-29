@@ -3,7 +3,7 @@ import { idParamsSchema, taskSchema, updateTaskSchema, withoutUndefined } from '
 
 import { resourceNotFound } from '../../errors.js';
 import { defineRoute } from '../../http/route.js';
-import { serializeTask } from './serialize.js';
+import { serializeOneTask } from './serialize.js';
 
 const tag = 'tasks';
 
@@ -22,7 +22,7 @@ export const taskRoutes = [
     async ({ db, workspaceId, params }) => {
       const row = await getTask(db, workspaceId, params.id);
       if (!row) throw resourceNotFound('Task');
-      return serializeTask(row);
+      return serializeOneTask(db, workspaceId, row);
     },
   ),
 
@@ -41,7 +41,7 @@ export const taskRoutes = [
     async ({ db, workspaceId, params, body }) => {
       const row = await updateTask(db, workspaceId, params.id, withoutUndefined(body));
       if (!row) throw resourceNotFound('Task');
-      return serializeTask(row);
+      return serializeOneTask(db, workspaceId, row);
     },
   ),
 

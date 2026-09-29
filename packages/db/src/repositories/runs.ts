@@ -1,9 +1,21 @@
 import { ACTIVE_RUN_STATUSES, FINAL_RUN_STATUSES } from '@aievo/shared';
 import type { JsonValue, RunError, StepStatus, TaskStatus } from '@aievo/shared';
-import { and, desc, eq, inArray, ne, notInArray, sql } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  getTableColumns,
+  inArray,
+  lte,
+  ne,
+  notInArray,
+  sql,
+} from 'drizzle-orm';
+import type { SQL } from 'drizzle-orm';
 
 import type { Db } from '../client.js';
-import { DuplicateRowError } from '../errors.js';
+import { DuplicateRowError, InvalidReferenceError } from '../errors.js';
 import { project, run, step, task, toolCall } from '../schema/index.js';
 import type { Project } from './projects.js';
 import type { Task } from './tasks.js';
@@ -464,4 +476,125 @@ export async function listStepToolCalls(
     .from(toolCall)
     .where(and(eq(toolCall.stepId, stepId), inArray(toolCall.stepId, stepsOf(db, workspaceId))))
     .orderBy(toolCall.createdAt);
+}
+
+/** A page of tool calls; `nextCursor` is the id to pass as `after` for the next one. */
+export interface ToolCallPage {
+  items: ToolCall[];
+  nextCursor: string | null;
+}
+
+/**
+ * Tool calls of the step in creation order, `limit` at a time, starting after the tool call
+ * `after`. Returns `null` when the step is not in the workspace and throws
+ * `InvalidReferenceError` when `after` is not a tool call of the step.
+ */
+export async function listStepToolCallPage(
+  db: Db,
+  workspaceId: string,
+  stepId: string,
+  page: { after?: string; limit: number },
+): Promise<ToolCallPage | null> {
+  const [owner] = await db
+    .select({ id: step.id })
+    .from(step)
+    .where(and(eq(step.id, stepId), inArray(step.id, stepsOf(db, workspaceId))));
+  if (!owner) return null;
+
+  let afterCondition: SQL | undefined;
+  if (page.after !== undefined) {
+    const [cursor] = await db
+      .select({ id: toolCall.id })
+      .from(toolCall)
+      .where(and(eq(toolCall.id, page.after), eq(toolCall.stepId, stepId)));
+    if (!cursor) throw new InvalidReferenceError('The cursor is not a tool call of this step');
+    // Compared in SQL, so the microseconds of `created_at` are not lost on the way.
+    afterCondition = sql`(${toolCall.createdAt}, ${toolCall.id}) > (
+      SELECT ${toolCall.createdAt}, ${toolCall.id} FROM ${toolCall} WHERE ${toolCall.id} = ${page.after}
+    )`;
+  }
+
+  const rows = await db
+    .select()
+    .from(toolCall)
+    .where(and(eq(toolCall.stepId, stepId), afterCondition))
+    .orderBy(asc(toolCall.createdAt), asc(toolCall.id))
+    .limit(page.limit + 1);
+  const items = rows.slice(0, page.limit);
+  const last = items.at(-1);
+  return { items, nextCursor: rows.length > page.limit && last ? last.id : null };
+}
+
+/** The first page of tool calls of a step and how many it has in all. */
+export interface FirstToolCallPage extends ToolCallPage {
+  total: number;
+}
+
+/**
+ * The first `limit` tool calls of every step of the run, with the number of tool calls of
+ * each step, in one query. Steps without tool calls (and runs outside the workspace) are
+ * missing from the map.
+ */
+export async function listFirstToolCallPages(
+  db: Db,
+  workspaceId: string,
+  runId: string,
+  limit: number,
+): Promise<Map<string, FirstToolCallPage>> {
+  const ranked = db
+    .select({
+      ...getTableColumns(toolCall),
+      position: sql<number>`row_number() over (
+        partition by ${toolCall.stepId} order by ${toolCall.createdAt}, ${toolCall.id}
+      )`
+        .mapWith(Number)
+        .as('position'),
+      total: sql<number>`count(*) over (partition by ${toolCall.stepId})`
+        .mapWith(Number)
+        .as('total'),
+    })
+    .from(toolCall)
+    .innerJoin(step, eq(step.id, toolCall.stepId))
+    .where(and(eq(step.runId, runId), inArray(step.runId, runsOf(db, workspaceId))))
+    .as('ranked');
+
+  // One row past the page tells whether a next page exists.
+  const rows = await db
+    .select()
+    .from(ranked)
+    .where(lte(ranked.position, limit + 1))
+    .orderBy(ranked.stepId, ranked.position);
+
+  const pages = new Map<string, FirstToolCallPage>();
+  for (const { position, total, ...call } of rows) {
+    const page = pages.get(call.stepId) ?? { items: [], nextCursor: null, total };
+    if (position <= limit) page.items.push(call);
+    else page.nextCursor = page.items.at(-1)?.id ?? null;
+    pages.set(call.stepId, page);
+  }
+  return pages;
+}
+
+/** What a task card shows about the newest run of its task. */
+export type RunSummary = Pick<Run, 'id' | 'taskId' | 'status' | 'prUrl' | 'prNumber'>;
+
+/** The newest run of each task; tasks that never ran (or are not in the workspace) are missing. */
+export async function listLatestTaskRuns(
+  db: Db,
+  workspaceId: string,
+  taskIds: string[],
+): Promise<Map<string, RunSummary>> {
+  if (taskIds.length === 0) return new Map();
+  const rows = await db
+    .selectDistinctOn([run.taskId], {
+      id: run.id,
+      taskId: run.taskId,
+      status: run.status,
+      prUrl: run.prUrl,
+      prNumber: run.prNumber,
+    })
+    .from(run)
+    .where(and(inArray(run.taskId, taskIds), inArray(run.id, runsOf(db, workspaceId))))
+    .orderBy(run.taskId, desc(run.createdAt), desc(run.id));
+  return new Map(rows.map((row) => [row.taskId, row]));
 }

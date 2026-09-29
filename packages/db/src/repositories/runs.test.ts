@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
-import { DuplicateRowError } from '../errors.js';
+import { DuplicateRowError, InvalidReferenceError } from '../errors.js';
 import { run } from '../schema/index.js';
 import { closeTestDb, getTestDb, resetDb } from '../test/db.js';
 import { createWorkspace } from '../test/fixtures.js';
@@ -16,7 +16,10 @@ import {
   finishStep,
   getRun,
   isRunCancelRequested,
+  listFirstToolCallPages,
+  listLatestTaskRuns,
   listRunSteps,
+  listStepToolCallPage,
   listStepToolCalls,
   listTaskRuns,
   requestRunCancel,
@@ -24,7 +27,7 @@ import {
   startStep,
   updateRun,
 } from './runs.js';
-import type { Run } from './runs.js';
+import type { Run, Step, ToolCall } from './runs.js';
 import { createTask, getTask, updateTask } from './tasks.js';
 
 const db = getTestDb();
@@ -450,5 +453,141 @@ describe('addStepUsage', () => {
     await finishStep(db, workspaceId, started!.id, { status: 'failed' });
     expect(await addStepUsage(db, workspaceId, started!.id, usage)).toBe(false);
     expect(await getRun(db, workspaceId, created.id)).toMatchObject({ costUsd: 0, tokensIn: 0 });
+  });
+});
+
+describe('tool call pages', () => {
+  let started: Step;
+  let calls: ToolCall[];
+
+  beforeEach(async () => {
+    const created = await mustCreateRun();
+    await mustClaim(created.id);
+    const step = await startStep(db, workspaceId, created.id, {
+      stepKey: 'implement',
+      agentKey: 'coder',
+      agentVersion: 'v1',
+    });
+    if (!step) throw new Error('Step was not started');
+    started = step;
+    calls = [];
+    for (const path of ['a.ts', 'b.ts', 'c.ts', 'd.ts', 'e.ts']) {
+      const call = await createToolCall(db, workspaceId, started.id, {
+        tool: 'read_file',
+        args: { path },
+        result: path,
+        isError: false,
+        durationMs: 1,
+        exitCode: null,
+      });
+      if (!call) throw new Error('Tool call was not created');
+      calls.push(call);
+    }
+  });
+
+  it('walks through the tool calls in order, page by page', async () => {
+    const first = await listStepToolCallPage(db, workspaceId, started.id, { limit: 2 });
+    expect(first).toEqual({ items: calls.slice(0, 2), nextCursor: calls[1]!.id });
+
+    const second = await listStepToolCallPage(db, workspaceId, started.id, {
+      after: first!.nextCursor!,
+      limit: 2,
+    });
+    expect(second).toEqual({ items: calls.slice(2, 4), nextCursor: calls[3]!.id });
+
+    const last = await listStepToolCallPage(db, workspaceId, started.id, {
+      after: second!.nextCursor!,
+      limit: 2,
+    });
+    expect(last).toEqual({ items: calls.slice(4), nextCursor: null });
+  });
+
+  it('has no next page when the limit covers everything', async () => {
+    expect(await listStepToolCallPage(db, workspaceId, started.id, { limit: 5 })).toEqual({
+      items: calls,
+      nextCursor: null,
+    });
+  });
+
+  it('refuses a cursor from another step', async () => {
+    const other = await startStep(db, workspaceId, started.runId, {
+      stepKey: 'check',
+      agentKey: 'diagnostic',
+      agentVersion: 'v1',
+    });
+
+    await expect(
+      listStepToolCallPage(db, workspaceId, other!.id, { after: calls[0]!.id, limit: 2 }),
+    ).rejects.toThrow(InvalidReferenceError);
+  });
+
+  it('reads the first page and the total of every step of a run at once', async () => {
+    const check = await startStep(db, workspaceId, started.runId, {
+      stepKey: 'check',
+      agentKey: 'platform',
+      agentVersion: 'v1',
+    });
+    const checkCall = await createToolCall(db, workspaceId, check!.id, {
+      tool: 'run_command',
+      args: { command: 'npm test' },
+      result: 'ok',
+      isError: false,
+      durationMs: 1,
+      exitCode: 0,
+    });
+    // A step without tool calls is not in the map.
+    await startStep(db, workspaceId, started.runId, {
+      stepKey: 'idle',
+      agentKey: 'platform',
+      agentVersion: 'v1',
+    });
+
+    const pages = await listFirstToolCallPages(db, workspaceId, started.runId, 2);
+
+    expect(pages).toEqual(
+      new Map([
+        [started.id, { items: calls.slice(0, 2), nextCursor: calls[1]!.id, total: 5 }],
+        [check!.id, { items: [checkCall], nextCursor: null, total: 1 }],
+      ]),
+    );
+    expect(
+      (await listFirstToolCallPages(db, workspaceId, started.runId, 5)).get(started.id),
+    ).toEqual({ items: calls, nextCursor: null, total: 5 });
+  });
+
+  it('shows nothing of another workspace', async () => {
+    expect(await listStepToolCallPage(db, otherWorkspaceId, started.id, { limit: 2 })).toBeNull();
+    expect(await listFirstToolCallPages(db, otherWorkspaceId, started.runId, 2)).toEqual(new Map());
+  });
+});
+
+describe('listLatestTaskRuns', () => {
+  it('returns the newest run of each task that ran', async () => {
+    const neverRan = await newTask('Idle');
+    const first = await mustCreateRun();
+    await finishRun(db, workspaceId, first.id, { status: 'failed' });
+    const second = await mustCreateRun();
+    await setRunPullRequest(db, workspaceId, second.id, {
+      url: 'https://github.com/octocat/demo/pull/3',
+      number: 3,
+    });
+
+    const latest = await listLatestTaskRuns(db, workspaceId, [taskId, neverRan]);
+
+    expect([...latest.keys()]).toEqual([taskId]);
+    expect(latest.get(taskId)).toEqual({
+      id: second.id,
+      taskId,
+      status: 'queued',
+      prUrl: 'https://github.com/octocat/demo/pull/3',
+      prNumber: 3,
+    });
+  });
+
+  it('shows nothing of another workspace', async () => {
+    await mustCreateRun();
+
+    expect(await listLatestTaskRuns(db, otherWorkspaceId, [taskId])).toEqual(new Map());
+    expect(await listLatestTaskRuns(db, workspaceId, [])).toEqual(new Map());
   });
 });

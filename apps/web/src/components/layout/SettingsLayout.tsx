@@ -5,7 +5,7 @@ function SettingsLink({
   to,
   children,
 }: {
-  to: '/settings/providers' | '/settings/github';
+  to: '/settings/providers' | '/settings/models' | '/settings/github';
   children: ReactNode;
 }) {
   return (
@@ -28,6 +28,7 @@ export function SettingsLayout() {
     <div className="flex flex-col gap-6">
       <nav aria-label="Settings" className="flex gap-4 border-b">
         <SettingsLink to="/settings/providers">Model providers</SettingsLink>
+        <SettingsLink to="/settings/models">Models</SettingsLink>
         <SettingsLink to="/settings/github">GitHub</SettingsLink>
       </nav>
       <Outlet />

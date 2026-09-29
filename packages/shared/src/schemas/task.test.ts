@@ -59,10 +59,37 @@ describe('taskSchema', () => {
       labels: [],
       position: 1,
       parentId: null,
+      latestRun: null,
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z',
     };
     expect(taskSchema.safeParse(task).success).toBe(true);
     expect(taskSchema.safeParse({ ...task, createdAt: 'yesterday' }).success).toBe(false);
+  });
+
+  it('carries the latest run of the task', () => {
+    const task = {
+      id: '00000000-0000-4000-8000-000000000011',
+      projectId: '00000000-0000-4000-8000-000000000003',
+      title: 'A',
+      description: '',
+      type: 'feature',
+      priority: 'medium',
+      status: 'in_review',
+      acceptanceCriteria: '',
+      labels: [],
+      position: 1,
+      parentId: null,
+      latestRun: {
+        id: '00000000-0000-4000-8000-000000000021',
+        status: 'succeeded',
+        prUrl: 'https://github.com/octocat/demo/pull/7',
+        prNumber: 7,
+      },
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    };
+    expect(taskSchema.parse(task)).toEqual(task);
+    expect(taskSchema.safeParse({ ...task, latestRun: { id: 'x' } }).success).toBe(false);
   });
 });

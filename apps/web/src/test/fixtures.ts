@@ -54,6 +54,7 @@ export function taskFixture(overrides: Partial<Schemas['Task']> = {}): Schemas['
     labels: [],
     position: 1,
     parentId: null,
+    latestRun: null,
     createdAt: NOW,
     updatedAt: NOW,
     ...overrides,
@@ -165,4 +166,68 @@ export function setupStatusFixture(
   overrides: Partial<Schemas['SetupStatus']> = {},
 ): Schemas['SetupStatus'] {
   return { modelProvider: true, githubToken: true, project: true, ...overrides };
+}
+
+export function runFixture(overrides: Partial<Schemas['Run']> = {}): Schemas['Run'] {
+  return {
+    id: fakeId(),
+    taskId: fakeId(),
+    status: 'running',
+    branch: 'agent/fix-login',
+    prUrl: null,
+    prNumber: null,
+    costUsd: 0.1234,
+    tokensIn: 12_000,
+    tokensOut: 800,
+    error: null,
+    cancelRequestedAt: null,
+    startedAt: NOW,
+    endedAt: null,
+    createdAt: NOW,
+    ...overrides,
+  };
+}
+
+export function toolCallFixture(overrides: Partial<Schemas['ToolCall']> = {}): Schemas['ToolCall'] {
+  return {
+    id: fakeId(),
+    stepId: fakeId(),
+    tool: 'read_file',
+    args: { path: 'src/app.ts' },
+    result: 'export const app = 1;',
+    isError: false,
+    durationMs: 12,
+    exitCode: null,
+    createdAt: NOW,
+    ...overrides,
+  };
+}
+
+export function stepFixture(overrides: Partial<Schemas['Step']> = {}): Schemas['Step'] {
+  return {
+    id: fakeId(),
+    runId: fakeId(),
+    stepKey: 'implement',
+    agentKey: 'coder',
+    iteration: 1,
+    status: 'running',
+    costUsd: 0.1,
+    tokensIn: 10_000,
+    tokensOut: 700,
+    result: null,
+    error: null,
+    iterations: null,
+    toolCallCount: 0,
+    toolCalls: { items: [], nextCursor: null },
+    startedAt: NOW,
+    endedAt: null,
+    createdAt: NOW,
+    ...overrides,
+  };
+}
+
+export function workspaceSettingsFixture(
+  overrides: Partial<Schemas['WorkspaceSettings']['agentModels']> = {},
+): Schemas['WorkspaceSettings'] {
+  return { agentModels: { coder: '00000000-0000-4000-8000-00000000c0de', ...overrides } };
 }

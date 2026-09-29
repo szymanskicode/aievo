@@ -3,12 +3,14 @@ import { fileURLToPath } from 'node:url';
 
 import { defineConfig, devices } from '@playwright/test';
 
-import { E2E_API_PORT, E2E_WEB_PORT, e2eDatabaseUrl } from './e2e/env';
+import { E2E_API_PORT, E2E_MASTER_KEY_ENV, E2E_WEB_PORT, e2eDatabaseUrl } from './e2e/env';
 
 const apiDir = fileURLToPath(new URL('../api', import.meta.url));
+const workerDir = fileURLToPath(new URL('../worker', import.meta.url));
 
 // A throwaway master key: E2E runs never store real provider keys, and it is never written down.
-const masterKey = randomBytes(32).toString('base64');
+// Test workers evaluate this file again; they inherit the key from the runner's environment.
+const masterKey = (process.env[E2E_MASTER_KEY_ENV] ??= randomBytes(32).toString('base64'));
 
 /**
  * End-to-end tests against the real API and a dedicated database (`aievo_e2e_test`), so they
@@ -22,7 +24,6 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
   reporter: [['list'], ['html', { open: 'never' }]],
-  globalSetup: './e2e/global-setup.ts',
   use: {
     baseURL: `http://127.0.0.1:${E2E_WEB_PORT}`,
     trace: 'retain-on-failure',
@@ -31,7 +32,9 @@ export default defineConfig({
   webServer: [
     {
       // Built by turbo before this task runs (`@aievo/web#test:e2e` depends on `@aievo/api#build`).
-      command: 'node dist/index.js',
+      // The database is rebuilt first (e2e/reset-db.ts). Web servers start one after another
+      // and before any global setup, so the worker below only ever sees the fresh database.
+      command: 'pnpm exec tsx ../web/e2e/reset-db.ts && node dist/index.js',
       cwd: apiDir,
       url: `http://127.0.0.1:${E2E_API_PORT}/api/health`,
       env: {
@@ -40,6 +43,22 @@ export default defineConfig({
         AIEVO_MASTER_KEY: masterKey,
         LOG_LEVEL: 'warn',
       },
+      reuseExistingServer: false,
+      timeout: 60_000,
+    },
+    {
+      // Real queue and agent loop with a scripted model, local git and a fake GitHub
+      // (apps/worker/src/e2e). It refuses to start without AIEVO_E2E_FAKES and a test database.
+      command: 'pnpm exec tsx src/e2e/main.ts',
+      cwd: workerDir,
+      wait: { stdout: /E2E worker waiting for runs/ },
+      env: {
+        AIEVO_E2E_FAKES: '1',
+        DATABASE_URL: e2eDatabaseUrl(),
+        AIEVO_WEB_URL: `http://127.0.0.1:${E2E_WEB_PORT}`,
+        LOG_LEVEL: 'info',
+      },
+      stdout: 'pipe',
       reuseExistingServer: false,
       timeout: 60_000,
     },

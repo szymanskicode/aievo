@@ -164,13 +164,29 @@ export type { SetupStatus } from './schemas/setup.js';
 export {
   ACTIVE_RUN_STATUSES,
   FINAL_RUN_STATUSES,
+  TOOL_CALL_PAGE_DEFAULT,
+  TOOL_CALL_PAGE_MAX,
   TOOL_RESULT_MAX_CHARS,
   isFinalRunStatus,
   runErrorSchema,
   runSchema,
+  runStepsQuerySchema,
+  runSummarySchema,
+  stepSchema,
+  toolCallPageSchema,
+  toolCallSchema,
+  toolCallsQuerySchema,
   truncateToolResult,
 } from './schemas/run.js';
-export type { JsonValue, RunDto, RunError } from './schemas/run.js';
+export type {
+  JsonValue,
+  RunDto,
+  RunError,
+  RunSummaryDto,
+  StepDto,
+  ToolCallDto,
+  ToolCallPageDto,
+} from './schemas/run.js';
 
 export { apiErrorSchema, idParamsSchema } from './schemas/common.js';
 export type { ApiErrorResponse, IdParams } from './schemas/common.js';

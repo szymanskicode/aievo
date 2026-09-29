@@ -1,7 +1,7 @@
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 
-import { setupStatusFixture } from './fixtures';
+import { setupStatusFixture, workspaceSettingsFixture } from './fixtures';
 
 /** Absolute URL of an API path, as the app's client requests it. */
 export function apiUrl(path: string): string {
@@ -10,10 +10,13 @@ export function apiUrl(path: string): string {
 
 /**
  * Answers every page needs through the layout: a fully configured instance, so the
- * first-run checklist stays out of the way unless a test overrides it.
+ * first-run checklist stays out of the way unless a test overrides it. The task panel
+ * always asks for runs and the workspace settings; by default no task has run yet.
  */
 const defaultHandlers = [
   http.get(apiUrl('/setup-status'), () => HttpResponse.json(setupStatusFixture())),
+  http.get(apiUrl('/workspace/settings'), () => HttpResponse.json(workspaceSettingsFixture())),
+  http.get(apiUrl('/tasks/:id/runs'), () => HttpResponse.json([])),
 ];
 
 /**

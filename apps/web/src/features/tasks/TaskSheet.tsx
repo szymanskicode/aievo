@@ -13,6 +13,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import { TaskRuns } from '@/features/runs/TaskRuns';
 
 import { taskQuery, useCreateTask, useUpdateTask } from './queries';
 import { TaskForm } from './TaskForm';
@@ -61,8 +62,15 @@ function EditTask({
     onDone();
   }
 
-  // Keyed by version, so a refetched task resets the form instead of mixing old and new values.
-  return <TaskForm key={task.data.updatedAt} task={task.data} onSubmit={save} onCancel={onDone} />;
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Keyed by version, so a refetched task resets the form instead of mixing old and new values. */}
+      <TaskForm key={task.data.updatedAt} task={task.data} onSubmit={save} onCancel={onDone} />
+      <div className="border-t pt-4">
+        <TaskRuns task={task.data} />
+      </div>
+    </div>
+  );
 }
 
 function CreateTask({ projectId, onDone }: { projectId: string; onDone: () => void }) {

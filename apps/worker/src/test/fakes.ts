@@ -85,6 +85,10 @@ export class FakeSandbox implements Sandbox {
     return Promise.reject(new Error('not used'));
   }
 
+  realPath(): Promise<string> {
+    return Promise.reject(new Error('not used'));
+  }
+
   listFiles(): Promise<string[]> {
     return Promise.resolve([]);
   }

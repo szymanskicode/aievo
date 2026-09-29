@@ -174,6 +174,12 @@ class DockerSandbox implements Sandbox {
     this.assertSucceeded(await this.runFileOp(['mv', '-f', '--', temp, target]));
   }
 
+  async realPath(path: string): Promise<string> {
+    const result = await this.runFileOp(['realpath', '-m', '--', resolveWorkspacePath(path)]);
+    this.assertSucceeded(result);
+    return result.stdout.toString('utf8').trim();
+  }
+
   async listFiles(dir = '.', options: ListFilesOptions = {}): Promise<string[]> {
     const target = resolveWorkspacePath(dir);
     const result = await this.runFileOp([

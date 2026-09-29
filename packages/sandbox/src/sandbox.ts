@@ -44,6 +44,11 @@ export interface Sandbox {
   readFile(path: string, options?: ReadFileOptions): Promise<string>;
   /** Creates missing parent directories. */
   writeFile(path: string, content: string): Promise<void>;
+  /**
+   * Absolute container path of `path` with every symlink resolved; missing trailing parts are
+   * kept as they are. Lets callers refuse links that lead out of `/workspace`.
+   */
+  realPath(path: string): Promise<string>;
   /** Files under `dir` relative to `/workspace`, honouring `.gitignore`; `.git` is left out. */
   listFiles(dir?: string, options?: ListFilesOptions): Promise<string[]>;
   /** Removes the container with everything running in it. Safe to call more than once. */

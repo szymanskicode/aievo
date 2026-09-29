@@ -15,5 +15,5 @@ export { RUN_LABEL, SANDBOX_ENV, buildContainerOptions, containerName } from './
 export { createDockerSandboxFactory, removeSandboxContainers } from './docker-sandbox.js';
 export type { DockerSandboxOptions } from './docker-sandbox.js';
 export { DEFAULT_SANDBOX_USER, resolveSandboxUser } from './host-user.js';
-export { resolveWorkspacePath } from './paths.js';
+export { resolveWorkspacePath, toWorkspaceRelative } from './paths.js';
 export { default as Docker } from 'dockerode';

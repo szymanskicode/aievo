@@ -52,3 +52,22 @@ Lista punktów do przeniesienia do `docs/architecture.md` (sekcje 10, 11, 18) na
 - **Dokument:** nie opisuje montowania.
 - **Stan faktyczny:** katalog roboczy runu jest montowany jako `/workspace` (zapis), a jego `.git` osobno tylko do odczytu. Git na hoście (commit, push) działa z `core.hooksPath` wskazującym pusty katalog, `core.fsmonitor=false`, bez helperów poświadczeń i bez konfiguracji systemowej i użytkownika. Kod z repo nie może więc podsunąć hooka ani konfiguracji, którą worker wykonałby na hoście (sekcja 15: nic z repo nie działa na hoście). Token trafia do gita tylko jako nagłówek HTTP w zmiennych środowiskowych procesu.
 - **Proponowana zmiana:** sekcja 11 (reguły kontenera) i sekcja 15 (bezpieczeństwo): dopisać te zasady.
+
+## 9. `AgentRuntime.run` z callbackiem zamiast `AsyncIterable` (prompt 4)
+
+- **Dokument (sekcja 9):** `run(input): AsyncIterable<AgentEvent>` (zdarzenia + końcowy artefakt).
+- **Stan faktyczny:** `run({ ..., onEvent }): Promise<AgentOutcome>`. Pętla czeka (`await`) na `onEvent` przy każdym zdarzeniu (`model-response`, `tool-call`, `finish-rejected`), więc worker zapisuje kroki i wywołania narzędzi po kolei, zanim pętla pójdzie dalej. Wynik (`succeeded` z wynikiem `finish`, albo `failed`/`cancelled` z kodem błędu) jest wartością zwracaną, nie ostatnim zdarzeniem. Decyzja użytkownika przy planie prompta 4.
+- **Proponowana zmiana:** sekcja 9, szkic interfejsu `AgentRuntime`.
+
+## 10. `run_command` przyjmuje argumenty, `git_diff` pokazuje nowe pliki bez zapisu indeksu (prompt 4)
+
+- **Dokument (sekcja 11, 15):** komenda z listy dozwolonych.
+- **Stan faktyczny:** dozwolona komenda (komendy projektu + lista dodatkowa) sama albo z dopisanymi argumentami złożonymi tylko ze znaków `[A-Za-z0-9_./=:@%+,-]` i spacji, np. `npm test -- src/math.test.ts`. Cudzysłowy, `;`, `|`, `&`, `$`, przekierowania i nowe linie są odrzucane. `git_diff` działa w sandboxie; ponieważ `.git` jest tylko do odczytu (punkt 8), nowe nieśledzone pliki pokazuje przez `git diff --no-index /dev/null <plik>`.
+- **Dodatkowo:** każda ścieżka narzędzia jest sprawdzana po rozwiązaniu dowiązań (`Sandbox.realPath`, `realpath -m` w kontenerze), a zapis do `.git` jest zawsze odrzucany, niezależnie od globów agenta.
+- **Proponowana zmiana:** sekcja 11, tabela narzędzi i akapit o uprawnieniach.
+
+## 11. Koszt tokenów cache liczony po cenie wejścia (prompt 4)
+
+- **Dokument (sekcja 9):** koszt z `usage` i cennika z bazy.
+- **Stan faktyczny:** tabela `model` ma tylko `priceIn`/`priceOut`, więc tokeny odczytu i zapisu cache są liczone po pełnej cenie wejścia (koszt zawyżony, limit bezpieczny). Limit kosztu kroku sprawdzany jest po każdej odpowiedzi modelu, więc jedno wywołanie może go przekroczyć.
+- **Proponowana zmiana:** osobne ceny cache w tabeli `model` (sekcja 5/9), gdy zaczniemy używać prompt cachingu.

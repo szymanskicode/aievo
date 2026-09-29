@@ -160,6 +160,15 @@ describe('Docker sandbox', () => {
     });
   });
 
+  it('resolves symlinks in real paths', async () => {
+    const s = await start();
+    await run(s, 'mkdir -p src && ln -s /etc src/etc-link && ln -s ../README.md src/readme');
+
+    expect(await s.realPath('src/etc-link/passwd')).toBe('/etc/passwd');
+    expect(await s.realPath('src/readme')).toBe('/workspace/README.md');
+    expect(await s.realPath('src/new/file.ts')).toBe('/workspace/src/new/file.ts');
+  });
+
   it('stops waiting when aborted', async () => {
     const s = await start();
     const controller = new AbortController();

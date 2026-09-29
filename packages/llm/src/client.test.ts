@@ -91,6 +91,7 @@ describe('createLlmClient', () => {
         // The SDK reports cache reads as 0 for this provider and leaves writes unknown.
         cacheReadTokens: 0,
         cacheWriteTokens: null,
+        costUsd: null,
       },
       { type: 'stop', reason: 'end' },
     ]);
@@ -105,13 +106,6 @@ describe('createLlmClient', () => {
     });
     await expect(collect(createLlmClient(ollama).chat(request))).rejects.toBeInstanceOf(
       ProviderError,
-    );
-  });
-
-  it('refuses tools until the agent loop exists', async () => {
-    const tools = [{ name: 'read_file', description: 'Read a file', inputSchema: {} }];
-    await expect(collect(createLlmClient(ollama).chat({ ...request, tools }))).rejects.toThrow(
-      /stage 2/,
     );
   });
 });

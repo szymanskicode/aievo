@@ -6,11 +6,11 @@ Pełna architektura: `docs/architecture.md`. Czytaj z niej tylko sekcje potrzebn
 
 ## Aktualny etap
 
-**Etap 2: Pierwszy agent** (roadmapa w sekcji 17 `docs/architecture.md`). Etap 1 zamknięty jako `v0.1.0`.
-Cel etapu: token GitHub (PAT) i kreator projektu (istniejące repo albo nowe z szablonu), worker z pg-boss, sandbox Docker z klonem repo i gałęzią taska, `LlmClient` na Vercel AI SDK, AgentRuntime native z narzędziami (list_files, read_file, search_code, edit_file, run_command), agent Programista (commit, push, PR), zapis stepów i tool_calli z prostą listą kroków w UI.
-Warunek ukończenia: prosty task kończy się PR-em otwartym przez agenta na prawdziwym repo, a wszystkie testy przechodzą.
+**Etap 2: Pierwszy agent** (roadmapa w sekcji 17 `docs/architecture.md`).
+Cel etapu: token GitHub i kreator projektu (istniejące repo albo nowe z szablonu), worker z kolejką pg-boss, sandbox Docker, pętla agenta z narzędziami, agent Programista, commit, push i PR, podgląd kroków w UI.
+Warunek ukończenia: task utworzony w UI kończy się pull requestem z kodem i testami na GitHubie, a wszystkie testy przechodzą.
 
-Nie buduj niczego z późniejszych etapów (silnik pipeline'u, Inspektor, Doktor, SSE, limity kosztów, Tester, podgląd, Studio). Jeśli coś z nich wydaje się potrzebne, zatrzymaj się i zapytaj.
+Nie buduj niczego z późniejszych etapów (Inspektor, Doktor, silnik pipeline'u, SSE, Tester, Strażnik, podgląd aplikacji, Studio). Jeśli coś z nich wydaje się potrzebne, zatrzymaj się i zapytaj.
 
 ## Stack (decyzje podjęte, nie zmieniaj bez pytania)
 

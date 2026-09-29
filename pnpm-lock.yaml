@@ -384,12 +384,21 @@ importers:
 
   apps/worker:
     dependencies:
+      '@aievo/agent-runtime':
+        specifier: workspace:*
+        version: link:../../packages/agent-runtime
       '@aievo/db':
         specifier: workspace:*
         version: link:../../packages/db
       '@aievo/git':
         specifier: workspace:*
         version: link:../../packages/git
+      '@aievo/llm':
+        specifier: workspace:*
+        version: link:../../packages/llm
+      '@aievo/presets':
+        specifier: workspace:*
+        version: link:../../packages/presets
       '@aievo/queue':
         specifier: workspace:*
         version: link:../../packages/queue
@@ -415,6 +424,9 @@ importers:
       eslint:
         specifier: ^10.11.0
         version: 10.11.0(jiti@2.7.0)(supports-color@10.2.2)
+      msw:
+        specifier: ^2.15.0
+        version: 2.15.0(@types/node@24.19.0)(typescript@5.9.3)
       tsx:
         specifier: ^4.23.15
         version: 4.23.15

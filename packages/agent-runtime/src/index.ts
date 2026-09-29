@@ -17,3 +17,4 @@ export type {
   ToolName,
 } from './types.js';
 export { describeAllowedCommands, isAllowedCommand } from './tools/shell.js';
+export { matchesPath } from './tools/glob.js';

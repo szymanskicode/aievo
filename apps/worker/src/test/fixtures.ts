@@ -12,14 +12,18 @@ import {
 } from '@aievo/db';
 import type { Db, Project, Run, Task } from '@aievo/db';
 import { createWorkspace, getTestDb, resetDb } from '@aievo/db/testing';
-import type { ProjectCommands } from '@aievo/shared';
+import { FakeLlmClient } from '@aievo/agent-runtime/testing';
+import type { FakeResponse } from '@aievo/agent-runtime/testing';
+import { loadAgentPreset } from '@aievo/presets';
+import { projectSettingsSchema } from '@aievo/shared';
+import type { CoderResult, ProjectCommands, ProjectSettingsInput } from '@aievo/shared';
 import { createSecretBox, keyHint } from '@aievo/shared/crypto';
 import type { SecretBox } from '@aievo/shared/crypto';
 import { pino } from 'pino';
 
 import type { RunnerConfig, RunnerDeps } from '../run/execute-run.js';
 import { createGitTokenOpener } from '../run/git-token.js';
-import { FakeLocalGit, FakeSandboxFactory } from './fakes.js';
+import { FakeGitProvider, FakeLocalGit, FakeSandboxFactory } from './fakes.js';
 
 export interface RunFixture {
   db: Db;
@@ -32,6 +36,8 @@ export interface RunFixture {
   secretBox: SecretBox;
   git: FakeLocalGit;
   sandboxes: FakeSandboxFactory;
+  github: FakeGitProvider;
+  agent: FakeAgent;
   workDir: string;
   deps: RunnerDeps;
 }
@@ -58,7 +64,11 @@ export async function newRun(db: Db, workspaceId: string, taskId: string): Promi
  * queued run and runner dependencies built on fakes.
  */
 export async function setupRun(
-  options: { commands?: ProjectCommands; config?: Partial<RunnerConfig> } = {},
+  options: {
+    commands?: ProjectCommands;
+    settings?: Omit<ProjectSettingsInput, 'commands'>;
+    config?: Partial<RunnerConfig>;
+  } = {},
 ): Promise<RunFixture> {
   const db = getTestDb();
   await resetDb(db);
@@ -78,7 +88,10 @@ export async function setupRun(
     repo: { owner: 'octocat', name: 'playground', gitCredentialId: credential.id },
   });
   const project = await updateProject(db, workspaceId, created.id, {
-    settings: { commands: options.commands ?? { install: 'npm ci', test: 'npm test' } },
+    settings: projectSettingsSchema.parse({
+      ...options.settings,
+      commands: options.commands ?? { install: 'npm ci', test: 'npm test' },
+    }),
   });
   if (!project) throw new Error('Project was not updated');
   const task = await newTask(db, workspaceId, project.id, 'Dodaj logowanie');
@@ -86,12 +99,26 @@ export async function setupRun(
 
   const git = new FakeLocalGit();
   const sandboxes = new FakeSandboxFactory();
+  const github = new FakeGitProvider();
   const workDir = await mkdtemp(path.join(tmpdir(), 'aievo-worker-'));
+  const agent: FakeAgent = { script: [finishCall()], clients: [] };
   const deps: RunnerDeps = {
     db,
     git,
     sandboxes,
     openGitToken: createGitTokenOpener(db, secretBox),
+    openAgentModel: () => {
+      const llm = new FakeLlmClient(agent.script);
+      agent.clients.push(llm);
+      return Promise.resolve({
+        llm,
+        modelId: 'claude-test',
+        displayName: 'Claude Test',
+        pricing: TEST_PRICING,
+      });
+    },
+    gitProvider: github.factory,
+    loadAgentPreset: (key) => loadAgentPreset(key),
     logger: pino({ level: 'silent' }),
     config: {
       workDir,
@@ -102,9 +129,46 @@ export async function setupRun(
       busyRetrySeconds: 15,
       cancelPollMs: 20,
       gitHostUrl: 'https://github.com',
+      webUrl: 'http://127.0.0.1:5173',
+      gitAuthorEmail: 'agent@aievo.local',
       ...options.config,
     },
   };
 
-  return { db, workspaceId, project, task, run, token, secretBox, git, sandboxes, workDir, deps };
+  return {
+    db,
+    workspaceId,
+    project,
+    task,
+    run,
+    token,
+    secretBox,
+    git,
+    sandboxes,
+    github,
+    agent,
+    workDir,
+    deps,
+  };
+}
+
+/** USD per million tokens of the fake model: 100 in + 20 out tokens cost 0.0006 USD. */
+export const TEST_PRICING = { inputUsdPerMTok: 3, outputUsdPerMTok: 15 };
+
+/** The scripted model of the next run, and the clients runs created from it. */
+export interface FakeAgent {
+  script: FakeResponse[];
+  clients: FakeLlmClient[];
+}
+
+export const CODER_RESULT: CoderResult = {
+  summary: 'Added sum(a, b) to src/math.ts with tests.',
+  changedFiles: ['src/math.ts', 'src/sum.test.ts'],
+  tests: { commands: ['npm test'], passed: true, summary: '2 tests passed' },
+  openIssues: [],
+};
+
+/** A model response that ends the step with `result`. */
+export function finishCall(result: Partial<CoderResult> = {}): FakeResponse {
+  return { toolCalls: [{ name: 'finish', input: { ...CODER_RESULT, ...result } }] };
 }

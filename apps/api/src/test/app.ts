@@ -1,9 +1,17 @@
 import { randomBytes } from 'node:crypto';
 
-import { createGitCredential, createProject, createProvider, createTask } from '@aievo/db';
+import {
+  createGitCredential,
+  createProject,
+  createProvider,
+  createTask,
+  updateModel,
+  upsertDiscoveredModels,
+} from '@aievo/db';
 import type {
   Db,
   GitCredential,
+  Model,
   NewProviderInput,
   Project,
   ProviderCredential,
@@ -11,6 +19,7 @@ import type {
 } from '@aievo/db';
 import { createWorkspace, getTestDb, resetDb } from '@aievo/db/testing';
 import type { RunQueue } from '@aievo/queue';
+import { modelCapabilitiesSchema } from '@aievo/shared';
 import { createSecretBox, keyHint } from '@aievo/shared/crypto';
 import type { SecretBox } from '@aievo/shared/crypto';
 import type { Express } from 'express';
@@ -134,4 +143,39 @@ export async function insertLinkedProject(
     repoUrl: 'https://github.com/octocat/demo',
     repo: { owner: 'octocat', name: 'demo', gitCredentialId: credentialId },
   });
+}
+
+/**
+ * A model of a new provider, by default one the Programista can run on (enabled, with tool
+ * calling and prices).
+ */
+export async function insertModel(
+  ctx: Pick<TestContext, 'db' | 'secretBox'>,
+  workspaceId: string,
+  overrides: Partial<Pick<Model, 'enabled' | 'priceIn' | 'priceOut'>> & {
+    tools?: boolean;
+  } = {},
+): Promise<Model> {
+  const provider = await insertProvider(ctx, workspaceId, {
+    type: 'anthropic',
+    label: 'Anthropic',
+    apiKey: fakeApiKey(),
+    baseUrl: null,
+  });
+  const [model] = await upsertDiscoveredModels(ctx.db, workspaceId, provider.id, [
+    {
+      modelId: 'claude-test',
+      displayName: 'Claude Test',
+      capabilities: modelCapabilitiesSchema.parse({ tools: overrides.tools ?? true }),
+      enabled: true,
+    },
+  ]);
+  if (!model) throw new Error('Model was not created');
+  const updated = await updateModel(ctx.db, workspaceId, model.id, {
+    enabled: overrides.enabled ?? true,
+    priceIn: overrides.priceIn === undefined ? 3 : overrides.priceIn,
+    priceOut: overrides.priceOut === undefined ? 15 : overrides.priceOut,
+  });
+  if (!updated) throw new Error('Model was not updated');
+  return updated;
 }

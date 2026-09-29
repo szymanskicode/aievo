@@ -36,6 +36,15 @@ describe('loadEnv', () => {
     });
   });
 
+  it('defaults and validates the web address and the commit e-mail', () => {
+    expect(loadEnv({})).toMatchObject({
+      AIEVO_WEB_URL: 'http://127.0.0.1:5173',
+      AIEVO_GIT_AUTHOR_EMAIL: 'agent@aievo.local',
+    });
+    expect(() => loadEnv({ AIEVO_WEB_URL: 'not a url' })).toThrow(/AIEVO_WEB_URL/);
+    expect(() => loadEnv({ AIEVO_GIT_AUTHOR_EMAIL: 'nobody' })).toThrow(/AIEVO_GIT_AUTHOR_EMAIL/);
+  });
+
   it('rejects invalid values with a readable message', () => {
     expect(() => loadEnv({ AIEVO_RUN_MAX_MINUTES: '0' })).toThrow(
       /Invalid environment configuration:\n {2}AIEVO_RUN_MAX_MINUTES/,

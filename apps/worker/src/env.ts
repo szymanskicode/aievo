@@ -41,6 +41,10 @@ const envSchema = z.object({
   AIEVO_MAX_RUNS_PER_PROJECT: positiveInt(1),
   /** Runs this worker process executes at the same time (across projects). */
   AIEVO_WORKER_CONCURRENCY: positiveInt(2),
+  /** Address of the web app, for links to runs in pull requests. */
+  AIEVO_WEB_URL: z.url().default('http://127.0.0.1:5173'),
+  /** E-mail of the commits agents make; the name is the agent's, e.g. `AIEvo Programista`. */
+  AIEVO_GIT_AUTHOR_EMAIL: z.email().default('agent@aievo.local'),
 });
 
 export type WorkerEnv = Omit<z.infer<typeof envSchema>, 'AIEVO_WORKDIR'> & {

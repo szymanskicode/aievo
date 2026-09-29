@@ -18,6 +18,7 @@ export type {
   ProjectRepoInput,
 } from './repositories/projects.js';
 export { getSetupStatus } from './repositories/setup.js';
+export { getWorkspaceSettings, updateWorkspaceSettings } from './repositories/workspaces.js';
 export type { SetupStatus } from './repositories/setup.js';
 export { createTask, deleteTask, getTask, listTasks, updateTask } from './repositories/tasks.js';
 export type { NewTaskInput, Task, TaskFilter, TaskPatch } from './repositories/tasks.js';
@@ -34,12 +35,14 @@ export type {
   ProviderPatch,
 } from './repositories/providers.js';
 export {
+  checkModelForAgent,
   getModel,
   listModels,
   updateModel,
   upsertDiscoveredModels,
 } from './repositories/models.js';
 export type {
+  AgentModelCheck,
   DiscoveredModelInput,
   Model,
   ModelFilter,
@@ -53,6 +56,8 @@ export {
 } from './repositories/git-credentials.js';
 export type { GitCredential, NewGitCredentialInput } from './repositories/git-credentials.js';
 export {
+  TASK_STATUS_AFTER_RUN,
+  addStepUsage,
   claimRun,
   createRun,
   createToolCall,
@@ -65,6 +70,7 @@ export {
   listStepToolCalls,
   listTaskRuns,
   requestRunCancel,
+  setRunPullRequest,
   startStep,
   updateRun,
 } from './repositories/runs.js';
@@ -77,5 +83,6 @@ export type {
   Run,
   RunPatch,
   Step,
+  StepUsage,
   ToolCall,
 } from './repositories/runs.js';

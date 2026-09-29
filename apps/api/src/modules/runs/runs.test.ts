@@ -1,5 +1,13 @@
-import { claimRun, finishRun, getRun, updateProject } from '@aievo/db';
-import type { Project, Task } from '@aievo/db';
+import {
+  claimRun,
+  finishRun,
+  getRun,
+  getTask,
+  updateModel,
+  updateProject,
+  updateWorkspaceSettings,
+} from '@aievo/db';
+import type { Model, Project, Task } from '@aievo/db';
 import { closeTestDb } from '@aievo/db/testing';
 import { runSchema } from '@aievo/shared';
 import request from 'supertest';
@@ -11,6 +19,7 @@ import {
   fakeGitHubToken,
   insertGitCredential,
   insertLinkedProject,
+  insertModel,
   insertProject,
   insertTask,
   setupTestApp,
@@ -20,6 +29,7 @@ import type { TestContext } from '../../test/app.js';
 let ctx: TestContext;
 let project: Project;
 let task: Task;
+let coderModel: Model;
 
 beforeEach(async () => {
   ctx = await setupTestApp();
@@ -29,6 +39,9 @@ beforeEach(async () => {
     settings: { commands: { install: 'npm ci', test: 'npm test' } },
   });
   task = await insertTask(ctx.db, ctx.workspaceId, project.id, 'Fix login');
+  // A run needs a model for the Programista (prompt 5 of stage 2).
+  coderModel = await insertModel(ctx, ctx.workspaceId);
+  await updateWorkspaceSettings(ctx.db, ctx.workspaceId, { agentModels: { coder: coderModel.id } });
 });
 
 afterAll(closeTestDb);
@@ -79,6 +92,36 @@ describe('POST /api/tasks/:id/runs', () => {
     expect(response.body.error.code).toBe('test_command_missing');
   });
 
+  it('marks the task running', async () => {
+    await startRun();
+
+    expect((await getTask(ctx.db, ctx.workspaceId, task.id))?.status).toBe('running');
+  });
+
+  it('refuses to start without a model for the Programista', async () => {
+    await updateWorkspaceSettings(ctx.db, ctx.workspaceId, { agentModels: { coder: null } });
+
+    const response = await startRun();
+
+    expect(response.status).toBe(409);
+    expect(response.body.error).toEqual({
+      code: 'agent_model_missing',
+      message: 'Choose the model for the Programista agent in the workspace settings first',
+    });
+    expect(ctx.queue.enqueued).toEqual([]);
+  });
+
+  it('refuses to start when the chosen model can no longer be used', async () => {
+    await updateModel(ctx.db, ctx.workspaceId, coderModel.id, { priceIn: null });
+
+    const response = await startRun();
+
+    expect(response.status).toBe(409);
+    expect(response.body.error.code).toBe('agent_model_unusable');
+    expect(response.body.error.message).toMatch(/pricing/);
+    expect((await getTask(ctx.db, ctx.workspaceId, task.id))?.status).toBe('draft');
+  });
+
   it('answers 503 when the app runs without a queue', async () => {
     const app = createApp({
       db: ctx.db,
@@ -114,6 +157,7 @@ describe('POST /api/tasks/:id/runs', () => {
     });
     const [run] = (await request(ctx.app).get(`/api/tasks/${task.id}/runs`)).body;
     expect(run).toMatchObject({ status: 'failed', error: { code: 'queue_unavailable' } });
+    expect((await getTask(ctx.db, ctx.workspaceId, task.id))?.status).toBe('needs_human');
   });
 });
 

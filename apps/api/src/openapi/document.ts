@@ -10,6 +10,7 @@ const ERROR_DESCRIPTIONS: Record<number, string> = {
   400: 'Invalid request',
   404: 'Resource not found',
   415: 'Request body is not JSON',
+  422: 'The request is valid but cannot be applied',
 };
 
 /** `/projects/:id` (Express) → `/projects/{id}` (OpenAPI). */

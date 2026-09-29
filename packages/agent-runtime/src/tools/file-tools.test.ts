@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { toolContext } from '../test/context.js';
+import { execResult, toolContext } from '../test/context.js';
 import { createTempDirSandbox } from '../test/temp-dir-sandbox.js';
 import type { TempDirSandbox } from '../test/temp-dir-sandbox.js';
 import {
@@ -221,5 +221,22 @@ describe('edit_file', () => {
     await expect(
       run(editFileTool, { path: 'src/a.ts', find: 'const b', replace: 'x' }, context),
     ).rejects.toThrow('This agent may not write files.');
+  });
+
+  it('leaves an existing test file alone when tests are protected', async () => {
+    const tests = await createTempDirSandbox(() => execResult('', 0));
+    try {
+      await writeFile(path.join(tests.root, 'a.test.ts'), 'it("works", () => {});\n');
+      const context = toolContext(tests, {
+        permissions: { writeGlobs: ['**'], protectedGlobs: ['**/*.test.ts'] },
+      });
+
+      await expect(
+        run(editFileTool, { path: 'a.test.ts', find: 'works', replace: 'passes' }, context),
+      ).rejects.toThrow(/existing test file/);
+      expect(await readFile(path.join(tests.root, 'a.test.ts'), 'utf8')).toContain('works');
+    } finally {
+      await tests.cleanup();
+    }
   });
 });

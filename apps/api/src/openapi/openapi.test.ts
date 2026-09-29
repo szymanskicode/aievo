@@ -47,6 +47,8 @@ const EXPECTED_OPERATIONS = [
   'GET /api/github/repos',
   'GET /api/templates',
   'GET /api/setup-status',
+  'GET /api/workspace/settings',
+  'PATCH /api/workspace/settings',
 ];
 
 const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete'] as const;

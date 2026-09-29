@@ -1,5 +1,5 @@
 import { ACTIVE_RUN_STATUSES, FINAL_RUN_STATUSES } from '@aievo/shared';
-import type { JsonValue, RunError, StepStatus } from '@aievo/shared';
+import type { JsonValue, RunError, StepStatus, TaskStatus } from '@aievo/shared';
 import { and, desc, eq, inArray, ne, notInArray, sql } from 'drizzle-orm';
 
 import type { Db } from '../client.js';
@@ -29,6 +29,12 @@ const inWorkspace = (db: Executor, workspaceId: string, id: string) =>
 const OPEN_STATUSES = ['queued', ...ACTIVE_RUN_STATUSES] as const;
 
 /**
+ * A run moves its task on only while the task is still `running`: a status someone set by
+ * hand during the run (e.g. `done` on the board) wins.
+ */
+const taskStillRunning = eq(task.status, 'running');
+
+/**
  * Queues a new run of the task. Returns `null` when the task does not exist in the workspace
  * and throws `DuplicateRowError` when the task already has a queued or active run.
  */
@@ -52,6 +58,7 @@ export async function createRun(db: Db, workspaceId: string, taskId: string): Pr
 
     const [row] = await tx.insert(run).values({ taskId }).returning();
     if (!row) throw new Error('Run insert returned no row');
+    await tx.update(task).set({ status: 'running' }).where(eq(task.id, taskId));
     return row;
   });
 }
@@ -101,6 +108,10 @@ export async function requestRunCancel(
         .set({ status: 'cancelled', cancelRequestedAt: sql`now()`, endedAt: sql`now()` })
         .where(eq(run.id, id))
         .returning();
+      await tx
+        .update(task)
+        .set({ status: TASK_STATUS_AFTER_RUN.cancelled })
+        .where(and(eq(task.id, current.taskId), taskStillRunning));
       return { run: row ?? current, outcome: 'cancelled' };
     }
     if ((FINAL_RUN_STATUSES as readonly string[]).includes(current.status)) {
@@ -206,16 +217,54 @@ export async function updateRun(
   return row ?? null;
 }
 
-/** Sets the final status of an open run. Returns `null` when the run had already finished. */
+type FinalRunStatus = (typeof FINAL_RUN_STATUSES)[number];
+
+/**
+ * Status the task of a run gets when the run ends: a pull request waits for review, a
+ * failure for a human, and a cancelled run leaves the task ready for another one.
+ */
+export const TASK_STATUS_AFTER_RUN = {
+  succeeded: 'in_review',
+  failed: 'needs_human',
+  cancelled: 'ready',
+} as const satisfies Record<FinalRunStatus, TaskStatus>;
+
+/**
+ * Sets the final status of an open run and moves its task on (`TASK_STATUS_AFTER_RUN`), in
+ * one transaction. Returns `null` when the run had already finished; the task is then left
+ * alone.
+ */
 export async function finishRun(
   db: Db,
   workspaceId: string,
   id: string,
-  result: { status: (typeof FINAL_RUN_STATUSES)[number]; error?: RunError | null },
+  result: { status: FinalRunStatus; error?: RunError | null },
+): Promise<Run | null> {
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .update(run)
+      .set({ status: result.status, error: result.error ?? null, endedAt: sql`now()` })
+      .where(and(inWorkspace(tx, workspaceId, id), inArray(run.status, OPEN_STATUSES)))
+      .returning();
+    if (!row) return null;
+    await tx
+      .update(task)
+      .set({ status: TASK_STATUS_AFTER_RUN[result.status] })
+      .where(and(eq(task.id, row.taskId), taskStillRunning));
+    return row;
+  });
+}
+
+/** Records the pull request of an open run. Returns `null` when the run is not open. */
+export async function setRunPullRequest(
+  db: Db,
+  workspaceId: string,
+  id: string,
+  pr: { url: string; number: number },
 ): Promise<Run | null> {
   const [row] = await db
     .update(run)
-    .set({ status: result.status, error: result.error ?? null, endedAt: sql`now()` })
+    .set({ prUrl: pr.url, prNumber: pr.number })
     .where(and(inWorkspace(db, workspaceId, id), inArray(run.status, OPEN_STATUSES)))
     .returning();
   return row ?? null;
@@ -239,11 +288,28 @@ export async function isRunCancelRequested(
  * belong to the worker that died.
  */
 export async function failOrphanedRuns(db: Db, error: RunError): Promise<Run[]> {
-  return db
-    .update(run)
-    .set({ status: 'failed', error, endedAt: sql`now()` })
-    .where(inArray(run.status, ACTIVE_RUN_STATUSES))
-    .returning();
+  return db.transaction(async (tx) => {
+    const rows = await tx
+      .update(run)
+      .set({ status: 'failed', error, endedAt: sql`now()` })
+      .where(inArray(run.status, ACTIVE_RUN_STATUSES))
+      .returning();
+    if (rows.length > 0) {
+      await tx
+        .update(task)
+        .set({ status: TASK_STATUS_AFTER_RUN.failed })
+        .where(
+          and(
+            inArray(
+              task.id,
+              rows.map((row) => row.taskId),
+            ),
+            taskStillRunning,
+          ),
+        );
+    }
+    return rows;
+  });
 }
 
 export interface NewStepInput {
@@ -299,6 +365,52 @@ export async function finishStep(
     )
     .returning();
   return row ?? null;
+}
+
+export interface StepUsage {
+  costUsd: number;
+  tokensIn: number;
+  tokensOut: number;
+}
+
+/**
+ * Adds tokens and cost of one model response to a running step and to its run, so the run
+ * always holds the sum of its steps. Returns `false` when the step is not running in the
+ * workspace (nothing is changed then).
+ */
+export async function addStepUsage(
+  db: Db,
+  workspaceId: string,
+  stepId: string,
+  usage: StepUsage,
+): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    const [updated] = await tx
+      .update(step)
+      .set({
+        costUsd: sql`${step.costUsd} + ${usage.costUsd}`,
+        tokensIn: sql`${step.tokensIn} + ${usage.tokensIn}`,
+        tokensOut: sql`${step.tokensOut} + ${usage.tokensOut}`,
+      })
+      .where(
+        and(
+          eq(step.id, stepId),
+          inArray(step.id, stepsOf(tx, workspaceId)),
+          eq(step.status, 'running'),
+        ),
+      )
+      .returning({ runId: step.runId });
+    if (!updated) return false;
+    await tx
+      .update(run)
+      .set({
+        costUsd: sql`${run.costUsd} + ${usage.costUsd}`,
+        tokensIn: sql`${run.tokensIn} + ${usage.tokensIn}`,
+        tokensOut: sql`${run.tokensOut} + ${usage.tokensOut}`,
+      })
+      .where(eq(run.id, updated.runId));
+    return true;
+  });
 }
 
 /** `result` must already be cut with `truncateToolResult`. */

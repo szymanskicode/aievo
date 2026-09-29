@@ -3,7 +3,13 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { closeTestDb, getTestDb, resetDb } from '../test/db.js';
 import { createWorkspace } from '../test/fixtures.js';
-import { getModel, listModels, updateModel, upsertDiscoveredModels } from './models.js';
+import {
+  checkModelForAgent,
+  getModel,
+  listModels,
+  updateModel,
+  upsertDiscoveredModels,
+} from './models.js';
 import type { DiscoveredModelInput } from './models.js';
 import { createProvider } from './providers.js';
 
@@ -167,5 +173,34 @@ describe('model repository', () => {
     expect(await getModel(db, strangerId, created!.id)).toBeNull();
     expect(await updateModel(db, strangerId, created!.id, { enabled: false })).toBeNull();
     expect(await getModel(db, workspaceId, created!.id)).toEqual(created);
+  });
+});
+
+describe('checkModelForAgent', () => {
+  it('tells whether the chosen model can run an agent', async () => {
+    const models = await upsertDiscoveredModels(db, workspaceId, providerId, [
+      discovered('ready'),
+      discovered('no-tools', { capabilities: modelCapabilitiesSchema.parse({}) }),
+    ]);
+    const ready = models.find((row) => row.modelId === 'ready');
+    const noTools = models.find((row) => row.modelId === 'no-tools');
+    await updateModel(db, workspaceId, ready!.id, { priceIn: 1, priceOut: 2 });
+    await updateModel(db, workspaceId, noTools!.id, { priceIn: 1, priceOut: 2 });
+
+    expect(await checkModelForAgent(db, workspaceId, null, ['tools'])).toEqual({
+      status: 'not_chosen',
+    });
+    expect(await checkModelForAgent(db, workspaceId, ready!.id, ['tools'])).toMatchObject({
+      status: 'ready',
+      model: { id: ready!.id },
+    });
+    expect(await checkModelForAgent(db, workspaceId, noTools!.id, ['tools'])).toEqual({
+      status: 'unusable',
+      reason: 'The model lacks required capabilities: tools',
+    });
+    expect(await checkModelForAgent(db, strangerId, ready!.id, ['tools'])).toEqual({
+      status: 'unusable',
+      reason: 'The model does not exist in this workspace',
+    });
   });
 });

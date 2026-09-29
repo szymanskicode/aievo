@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { toolContext } from '../test/context.js';
+import { execResult, toolContext } from '../test/context.js';
 import { createTempDirSandbox } from '../test/temp-dir-sandbox.js';
 import type { TempDirSandbox } from '../test/temp-dir-sandbox.js';
 import { resolveToolPath, resolveWritablePath } from './paths.js';
@@ -124,4 +124,56 @@ describe('resolveWritablePath', () => {
       await expect(resolveWritablePath(toolContext(sandbox), input)).rejects.toThrow(/\.git/);
     },
   );
+});
+
+describe('resolveWritablePath with protected globs', () => {
+  /** Files of the base ref, answered like `git cat-file -e origin/main:<path>` would. */
+  const baseFiles = new Set(['src/a.test.ts']);
+  let protectedSandbox: TempDirSandbox;
+  let checkFails = false;
+
+  beforeEach(async () => {
+    checkFails = false;
+    protectedSandbox = await createTempDirSandbox((command) => {
+      const match = /cat-file -e 'origin\/main:(.+)'$/.exec(command);
+      if (!match?.[1]) throw new Error(`Unexpected command ${command}`);
+      if (checkFails) return execResult('fatal: not a git repository', 2);
+      return execResult('', baseFiles.has(match[1]) ? 0 : 128);
+    });
+  });
+
+  afterEach(async () => {
+    await protectedSandbox.cleanup();
+  });
+
+  const context = () =>
+    toolContext(protectedSandbox, {
+      permissions: { writeGlobs: ['**'], protectedGlobs: ['**/*.test.ts'] },
+    });
+
+  it('refuses test files that exist on the base ref', async () => {
+    await expect(resolveWritablePath(context(), 'src/a.test.ts')).rejects.toThrow(
+      /"src\/a.test.ts" is an existing test file/,
+    );
+  });
+
+  it('allows new test files and files outside the protected globs', async () => {
+    expect(await resolveWritablePath(context(), 'src/b.test.ts')).toMatchObject({
+      relative: 'src/b.test.ts',
+    });
+    expect(await resolveWritablePath(context(), 'src/a.ts')).toMatchObject({
+      relative: 'src/a.ts',
+    });
+    // Only protected paths are checked against the base ref.
+    expect(protectedSandbox.commands.map((entry) => entry.command)).toEqual([
+      `git -c 'safe.directory=*' cat-file -e 'origin/main:src/b.test.ts'`,
+    ]);
+  });
+
+  it('refuses the write when the check itself fails', async () => {
+    checkFails = true;
+    await expect(resolveWritablePath(context(), 'src/b.test.ts')).rejects.toThrow(
+      /Checking whether the file is an existing test failed/,
+    );
+  });
 });

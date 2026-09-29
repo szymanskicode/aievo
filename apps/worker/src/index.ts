@@ -1,7 +1,8 @@
 import path from 'node:path';
 
 import { createDb } from '@aievo/db';
-import { createLocalGit } from '@aievo/git';
+import { createGitHubProvider, createLocalGit } from '@aievo/git';
+import { loadAgentPreset } from '@aievo/presets';
 import { createRunQueue } from '@aievo/queue';
 import {
   Docker,
@@ -13,6 +14,7 @@ import { createSecretBox } from '@aievo/shared/crypto';
 
 import { loadEnv, loadMasterKey } from './env.js';
 import { createLogger } from './logger.js';
+import { createAgentModelOpener } from './run/agent-model.js';
 import { executeRun } from './run/execute-run.js';
 import type { RunnerDeps } from './run/execute-run.js';
 import { createGitTokenOpener } from './run/git-token.js';
@@ -37,6 +39,9 @@ const deps: RunnerDeps = {
     user: resolveSandboxUser(env.AIEVO_SANDBOX_USER),
   }),
   openGitToken: createGitTokenOpener(db, secretBox),
+  openAgentModel: createAgentModelOpener(db, secretBox),
+  gitProvider: (token) => createGitHubProvider(token),
+  loadAgentPreset: (key) => loadAgentPreset(key),
   logger,
   config: {
     workDir: env.AIEVO_WORKDIR,
@@ -51,6 +56,8 @@ const deps: RunnerDeps = {
     busyRetrySeconds: 15,
     cancelPollMs: 2_000,
     gitHostUrl: 'https://github.com',
+    webUrl: env.AIEVO_WEB_URL,
+    gitAuthorEmail: env.AIEVO_GIT_AUTHOR_EMAIL,
   },
 };
 

@@ -14,6 +14,15 @@ describe('projectSettingsSchema', () => {
     expect(projectSettingsSchema.parse({})).toEqual({ commands: {} });
   });
 
+  it('accepts run limits and refuses invalid ones', () => {
+    expect(projectSettingsSchema.parse({ limits: { maxRunCostUsd: 2.5 } }).limits).toEqual({
+      maxRunCostUsd: 2.5,
+    });
+    for (const limits of [{ maxIterations: 0 }, { maxRunCostUsd: -1 }, { maxRunMinutes: 1.5 }]) {
+      expect(projectSettingsSchema.safeParse({ limits }).success).toBe(false);
+    }
+  });
+
   it('rejects a blank command', () => {
     expect(projectSettingsSchema.safeParse({ commands: { test: '  ' } }).success).toBe(false);
   });

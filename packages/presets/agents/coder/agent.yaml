@@ -1,0 +1,14 @@
+# Programista: implements a task with tests (docs/architecture.md section 7).
+key: coder
+name: Programista
+role: coder
+runtime: native
+requiredCapabilities: [tools]
+tools: [list_files, read_file, search_code, write_file, edit_file, run_command, git_diff]
+permissions:
+  write: ['**']
+  # Section 12: the coder may add tests, but not change the ones on the base branch.
+  existingTests: read-only
+limits:
+  maxIterations: 30
+result: coder-result@1

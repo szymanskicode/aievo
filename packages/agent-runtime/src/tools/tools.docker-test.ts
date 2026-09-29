@@ -10,6 +10,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { toolContext } from '../test/context.js';
 import { gitDiffTool, runCommandTool, searchCodeTool } from './command-tools.js';
+import { writeFileTool } from './file-tools.js';
 import { resolveToolPath } from './paths.js';
 import type { Tool } from './tool.js';
 
@@ -32,6 +33,7 @@ beforeAll(async () => {
   await mkdir(path.join(root, 'src'));
   await writeFile(path.join(root, 'src', 'math.ts'), 'export const one = 1;\n');
   await writeFile(path.join(root, 'README.md'), "It's a demo\n");
+  await writeFile(path.join(root, 'src', 'math.test.ts'), "it('works', () => {});\n");
   git('init', '-q', '-b', 'main');
   git('config', 'core.autocrlf', 'false');
   git('add', '-A');
@@ -90,6 +92,19 @@ describe('tools in a real sandbox', () => {
     await expect(resolveToolPath(toolContext(sandbox), 'etc-link/passwd')).rejects.toThrow(
       /symbolic link/,
     );
+  });
+
+  it('keeps existing tests read-only but lets new tests be written', async () => {
+    const context = toolContext(sandbox, {
+      permissions: { writeGlobs: ['**'], protectedGlobs: ['**/*.test.ts'] },
+    });
+    const write = (file: string) =>
+      writeFileTool.execute({ path: file, content: "it('new', () => {});\n" }, context);
+
+    await expect(write('src/math.test.ts')).rejects.toThrow(/existing test file/);
+    expect((await write('src/sum.test.ts')).output).toMatch(/^Wrote src\/sum.test.ts/);
+    // A test file the agent created in this run stays writable.
+    expect((await write('src/sum.test.ts')).output).toMatch(/^Wrote src\/sum.test.ts/);
   });
 
   it('runs allowed commands', async () => {

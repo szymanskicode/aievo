@@ -35,11 +35,39 @@ export const previewSchema = z.strictObject({
 
 export type Preview = z.infer<typeof previewSchema>;
 
+/**
+ * Limits of a run of the project (docs/architecture.md section 15); a missing value is
+ * inherited from `PLATFORM_RUN_LIMITS`.
+ */
+export const projectRunLimitsSchema = z.strictObject({
+  /** Model responses per agent step. */
+  maxIterations: z.int().positive().max(500).optional(),
+  maxRunCostUsd: z.number().positive().max(10_000).optional(),
+  maxRunMinutes: z
+    .int()
+    .positive()
+    .max(24 * 60)
+    .optional(),
+});
+
+export type ProjectRunLimits = z.infer<typeof projectRunLimitsSchema>;
+
+/**
+ * Platform defaults of the run limits. The run time limit also has a worker-wide default
+ * (`AIEVO_RUN_MAX_MINUTES`), which takes the place of `maxRunMinutes` there.
+ */
+export const PLATFORM_RUN_LIMITS = {
+  maxIterations: 30,
+  maxRunCostUsd: 5,
+  maxRunMinutes: 60,
+} as const satisfies Required<ProjectRunLimits>;
+
 /** Shape of `project.settings` (JSONB). Grows with later stages. */
 export const projectSettingsSchema = z
   .object({
     commands: projectCommandsSchema.default({}),
     preview: previewSchema.optional(),
+    limits: projectRunLimitsSchema.optional(),
   })
   .meta({ id: 'ProjectSettingsInput' });
 

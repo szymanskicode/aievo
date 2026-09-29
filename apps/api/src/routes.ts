@@ -12,6 +12,7 @@ import { runRoutes } from './modules/runs/routes.js';
 import { setupRoutes } from './modules/setup/routes.js';
 import { taskRoutes } from './modules/tasks/routes.js';
 import { templateRoutes } from './modules/templates/routes.js';
+import { workspaceRoutes } from './modules/workspace/routes.js';
 import { buildOpenApiDocument } from './openapi/document.js';
 import type { OpenApiDocument } from './openapi/document.js';
 
@@ -49,5 +50,6 @@ export const apiRoutes: readonly Route[] = [
   ...githubRoutes,
   ...templateRoutes,
   ...setupRoutes,
+  ...workspaceRoutes,
   openApiRoute,
 ];

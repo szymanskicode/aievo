@@ -140,6 +140,26 @@
               "port",
               "readyPath"
             ]
+          },
+          "limits": {
+            "type": "object",
+            "properties": {
+              "maxIterations": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 500
+              },
+              "maxRunCostUsd": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 10000
+              },
+              "maxRunMinutes": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 1440
+              }
+            }
           }
         },
         "required": [
@@ -546,6 +566,27 @@
             "required": [
               "port"
             ],
+            "additionalProperties": false
+          },
+          "limits": {
+            "type": "object",
+            "properties": {
+              "maxIterations": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 500
+              },
+              "maxRunCostUsd": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 10000
+              },
+              "maxRunMinutes": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 1440
+              }
+            },
             "additionalProperties": false
           }
         }
@@ -1811,6 +1852,48 @@
           "githubToken",
           "project"
         ]
+      },
+      "WorkspaceSettings": {
+        "type": "object",
+        "properties": {
+          "agentModels": {
+            "type": "object",
+            "properties": {
+              "coder": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uuid"
+              }
+            },
+            "required": [
+              "coder"
+            ]
+          }
+        },
+        "required": [
+          "agentModels"
+        ]
+      },
+      "UpdateWorkspaceSettings": {
+        "type": "object",
+        "properties": {
+          "agentModels": {
+            "type": "object",
+            "properties": {
+              "coder": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uuid"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
       }
     },
     "parameters": {}
@@ -3469,6 +3552,104 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SetupStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workspace/settings": {
+      "get": {
+        "summary": "Settings of the workspace, such as the model of each agent role",
+        "tags": [
+          "workspace"
+        ],
+        "responses": {
+          "200": {
+            "description": "Settings of the workspace, such as the model of each agent role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceSettings"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Change settings of the workspace. The model of the Programista agent must be enabled, priced and have the capabilities the agent requires (422 otherwise); `null` clears it.",
+        "tags": [
+          "workspace"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateWorkspaceSettings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Change settings of the workspace. The model of the Programista agent must be enabled, priced and have the capabilities the agent requires (422 otherwise); `null` clears it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceSettings"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request body is not JSON",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request is valid but cannot be applied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
                 }
               }
             }

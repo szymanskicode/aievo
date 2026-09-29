@@ -1,20 +1,13 @@
 import type { LlmClient, ModelPricing, StopReason } from '@aievo/llm';
 import type { Sandbox } from '@aievo/sandbox';
-import type { JsonValue } from '@aievo/shared';
+import { agentToolNames } from '@aievo/shared';
+import type { AgentToolName, JsonValue } from '@aievo/shared';
 import type { z } from 'zod';
 
 /** Tools an agent can be given; `finish` is always added. */
-export const TOOL_NAMES = [
-  'list_files',
-  'read_file',
-  'search_code',
-  'write_file',
-  'edit_file',
-  'run_command',
-  'git_diff',
-] as const;
+export const TOOL_NAMES = agentToolNames;
 
-export type ToolName = (typeof TOOL_NAMES)[number];
+export type ToolName = AgentToolName;
 
 export interface AgentPermissions {
   /**
@@ -22,6 +15,11 @@ export interface AgentPermissions {
    * `.git` is never writable.
    */
   writeGlobs: string[] | null;
+  /**
+   * Globs of files that may be created but not changed once they exist on `git.baseRef`, e.g.
+   * the existing tests for an agent that may only add tests (docs/architecture.md section 12).
+   */
+  protectedGlobs?: string[];
 }
 
 export interface AgentConfig {

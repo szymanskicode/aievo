@@ -1,4 +1,5 @@
-import type { ModelCapabilities, ModelCapabilitiesPatch } from '@aievo/shared';
+import { checkAgentModel } from '@aievo/shared';
+import type { ModelCapabilities, ModelCapabilitiesPatch, ModelCapabilityFlag } from '@aievo/shared';
 import { and, asc, eq, getTableColumns, sql } from 'drizzle-orm';
 import type { PgUpdateSetSource } from 'drizzle-orm/pg-core';
 
@@ -66,6 +67,28 @@ export async function listModels(
 export async function getModel(db: Db, workspaceId: string, id: string): Promise<Model | null> {
   const [row] = await db.select().from(model).where(inWorkspace(workspaceId, id));
   return row ?? null;
+}
+
+export type AgentModelCheck =
+  | { status: 'ready'; model: Model }
+  | { status: 'not_chosen' }
+  | { status: 'unusable'; reason: string };
+
+/**
+ * Whether the model `modelId` (chosen for an agent in the workspace settings; `null` when
+ * none is) exists in the workspace and can run an agent requiring `required`.
+ */
+export async function checkModelForAgent(
+  db: Db,
+  workspaceId: string,
+  modelId: string | null,
+  required: readonly ModelCapabilityFlag[],
+): Promise<AgentModelCheck> {
+  if (modelId === null) return { status: 'not_chosen' };
+  const found = await getModel(db, workspaceId, modelId);
+  if (!found) return { status: 'unusable', reason: 'The model does not exist in this workspace' };
+  const reason = checkAgentModel(found, required);
+  return reason ? { status: 'unusable', reason } : { status: 'ready', model: found };
 }
 
 /**

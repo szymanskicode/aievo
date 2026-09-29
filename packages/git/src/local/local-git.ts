@@ -70,6 +70,62 @@ export interface LocalGit {
   commitAll(dir: string, input: CommitInput): Promise<string | null>;
   /** Pushes an agent branch to `origin`. Never forces and never writes the base branch. */
   pushAgentBranch(dir: string, input: PushInput): Promise<void>;
+  /** Files the commits of HEAD change since it forked from `baseRef` (e.g. `origin/main`). */
+  changedFiles(dir: string, baseRef: string, signal?: AbortSignal): Promise<ChangedFile[]>;
+  /**
+   * Uncommitted changes of the working copy against HEAD, untracked files as `added`;
+   * ignored files are left out.
+   */
+  workingChanges(dir: string, signal?: AbortSignal): Promise<ChangedFile[]>;
+  /** Puts `paths` back as they are in `ref` (e.g. `HEAD`), also files that were deleted. */
+  restoreFiles(dir: string, ref: string, paths: string[], signal?: AbortSignal): Promise<void>;
+}
+
+export interface ChangedFile {
+  /** Renames are reported as a deletion and an addition. */
+  status: 'added' | 'modified' | 'deleted';
+  /** Relative to the repository root, with `/` separators. */
+  path: string;
+}
+
+const CHANGE_STATUS: Record<string, ChangedFile['status']> = {
+  A: 'added',
+  M: 'modified',
+  T: 'modified',
+  D: 'deleted',
+};
+
+/** Parses `git diff --name-status --no-renames -z`: `<status>\0<path>\0` pairs. */
+export function parseNameStatus(output: string): ChangedFile[] {
+  const fields = output.split('\0');
+  const files: ChangedFile[] = [];
+  for (let i = 0; i + 1 < fields.length; i += 2) {
+    const code = fields[i] ?? '';
+    const path = fields[i + 1] ?? '';
+    if (code === '' || path === '') continue;
+    files.push({ status: CHANGE_STATUS[code.charAt(0)] ?? 'modified', path });
+  }
+  return files;
+}
+
+/**
+ * Parses `git status --porcelain=v1 -z --no-renames`: `XY <path>\0` entries, where `X` is the
+ * index and `Y` the working tree; `??` marks an untracked file.
+ */
+export function parsePorcelainStatus(output: string): ChangedFile[] {
+  const files: ChangedFile[] = [];
+  for (const entry of output.split('\0')) {
+    if (entry.length < 4) continue;
+    const code = entry.slice(0, 2);
+    const path = entry.slice(3);
+    if (code === '??') {
+      files.push({ status: 'added', path });
+      continue;
+    }
+    const letter = code.charAt(1) === ' ' ? code.charAt(0) : code.charAt(1);
+    files.push({ status: CHANGE_STATUS[letter] ?? 'modified', path });
+  }
+  return files;
 }
 
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000;
@@ -284,6 +340,29 @@ export async function createLocalGit(options: LocalGitOptions): Promise<LocalGit
         remoteUrl,
         ...(signal ? { signal } : {}),
       });
+    },
+
+    async changedFiles(dir, baseRef, signal) {
+      if (baseRef.startsWith('-')) throw new LocalGitError('invalid_branch');
+      const output = await run(
+        ['diff', '--name-status', '--no-renames', '--no-ext-diff', '-z', `${baseRef}...HEAD`, '--'],
+        { cwd: dir, ...(signal ? { signal } : {}) },
+      );
+      return parseNameStatus(output);
+    },
+
+    async workingChanges(dir, signal) {
+      const output = await run(
+        ['status', '--porcelain=v1', '-z', '--no-renames', '--untracked-files=all'],
+        { cwd: dir, ...(signal ? { signal } : {}) },
+      );
+      return parsePorcelainStatus(output);
+    },
+
+    async restoreFiles(dir, ref, paths, signal) {
+      if (paths.length === 0) return;
+      if (ref.startsWith('-')) throw new LocalGitError('invalid_branch');
+      await run(['checkout', ref, '--', ...paths], { cwd: dir, ...(signal ? { signal } : {}) });
     },
   };
 }

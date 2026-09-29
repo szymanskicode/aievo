@@ -13,6 +13,7 @@ import { z } from 'zod';
 
 import { ApiError, resourceNotFound } from '../../errors.js';
 import { defineRoute } from '../../http/route.js';
+import { assertAgentModelReady, coderPreset } from '../workspace/agent-model.js';
 import { serializeRun } from './serialize.js';
 
 const tag = 'runs';
@@ -48,6 +49,7 @@ export const runRoutes = [
           'Set the test command of the project first',
         );
       }
+      await assertAgentModelReady(db, workspaceId, await coderPreset());
 
       const run = await createRun(db, workspaceId, task.id).catch((error: unknown) => {
         if (error instanceof DuplicateRowError) {

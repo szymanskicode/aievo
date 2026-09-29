@@ -30,8 +30,37 @@ export type {
   TaskType,
 } from './schemas/enums.js';
 
-export { workspaceLimitsSchema, workspaceSettingsSchema } from './schemas/workspace.js';
-export type { WorkspaceLimits, WorkspaceSettings } from './schemas/workspace.js';
+export {
+  chosenAgentModel,
+  updateWorkspaceSettingsSchema,
+  workspaceLimitsSchema,
+  workspaceSettingsResponseSchema,
+  workspaceSettingsSchema,
+} from './schemas/workspace.js';
+export type {
+  UpdateWorkspaceSettingsInput,
+  WorkspaceLimits,
+  WorkspaceSettings,
+} from './schemas/workspace.js';
+
+export {
+  agentPresetSchema,
+  agentResultSchemas,
+  agentToolNames,
+  agentToolNameSchema,
+  checkAgentModel,
+  coderResultSchema,
+  modelCapabilityFlags,
+} from './schemas/agent.js';
+export type {
+  AgentModelCandidate,
+  AgentPreset,
+  AgentPresetInput,
+  AgentResultId,
+  AgentToolName,
+  CoderResult,
+  ModelCapabilityFlag,
+} from './schemas/agent.js';
 
 export {
   modelCapabilitiesPatchSchema,
@@ -69,11 +98,13 @@ export type {
 
 export {
   DEFAULT_NPM_COMMANDS,
+  PLATFORM_RUN_LIMITS,
   createExistingProjectSchema,
   createNewProjectSchema,
   createProjectSchema,
   previewSchema,
   projectCommandsSchema,
+  projectRunLimitsSchema,
   projectSchema,
   projectSettingsSchema,
   testPolicySchema,
@@ -86,6 +117,7 @@ export type {
   Preview,
   ProjectCommands,
   ProjectDto,
+  ProjectRunLimits,
   ProjectSettings,
   ProjectSettingsInput,
   TestPolicy,

@@ -1,4 +1,13 @@
 export {
+  AGENTS_DIR,
+  AGENT_FILE,
+  AgentPresetNotFoundError,
+  InvalidAgentPresetError,
+  SYSTEM_PROMPT_FILE,
+  loadAgentPreset,
+} from './agents.js';
+export type { AgentPresetSource, LoadedAgentPreset } from './agents.js';
+export {
   InvalidTemplateError,
   MANIFEST_FILE,
   TEMPLATES_DIR,

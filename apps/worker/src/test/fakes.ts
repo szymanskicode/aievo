@@ -1,7 +1,15 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import type { CloneInput, LocalGit } from '@aievo/git';
+import type {
+  ChangedFile,
+  CloneInput,
+  CommitInput,
+  CreatePullRequestInput,
+  GitProvider,
+  LocalGit,
+  PushInput,
+} from '@aievo/git';
 import type {
   CreateSandboxInput,
   ExecOptions,
@@ -41,13 +49,69 @@ export class FakeLocalGit implements LocalGit {
     return Promise.resolve();
   }
 
-  commitAll(): Promise<string | null> {
-    return Promise.reject(new Error('Diagnostic runs never commit'));
+  commits: CommitInput[] = [];
+  /** What `commitAll` returns; `null` means nothing changed. */
+  commitSha: string | null = 'c0ffee'.padEnd(40, '0');
+  pushes: PushInput[] = [];
+  pushError: Error | undefined;
+  changed: ChangedFile[] = [{ status: 'modified', path: 'README.md' }];
+
+  commitAll(_dir: string, input: CommitInput): Promise<string | null> {
+    this.commits.push(input);
+    return Promise.resolve(this.commitSha);
   }
 
-  pushAgentBranch(): Promise<void> {
-    return Promise.reject(new Error('Diagnostic runs never push'));
+  pushAgentBranch(_dir: string, input: PushInput): Promise<void> {
+    this.pushes.push(input);
+    return this.pushError ? Promise.reject(this.pushError) : Promise.resolve();
   }
+
+  changedFiles(): Promise<ChangedFile[]> {
+    return Promise.resolve(this.changed);
+  }
+
+  /** Answers of `workingChanges` in call order (after install, after the agent); then none. */
+  working: ChangedFile[][] = [];
+  restores: { ref: string; paths: string[] }[] = [];
+
+  workingChanges(): Promise<ChangedFile[]> {
+    return Promise.resolve(this.working.shift() ?? []);
+  }
+
+  restoreFiles(_dir: string, ref: string, paths: string[]): Promise<void> {
+    this.restores.push({ ref, paths });
+    return Promise.resolve();
+  }
+}
+
+/** A Git host that only opens pull requests and records them. */
+export class FakeGitProvider {
+  pullRequests: CreatePullRequestInput[] = [];
+  tokens: string[] = [];
+  error: Error | undefined;
+
+  /** The factory the runner gets: one provider per token. */
+  readonly factory = (token: string): GitProvider => {
+    this.tokens.push(token);
+    const unused = () => Promise.reject(new Error('Not used by runs'));
+    return {
+      verifyToken: unused,
+      listOwners: unused,
+      listRepos: unused,
+      getRepo: unused,
+      createRepo: unused,
+      createInitialCommit: unused,
+      listPullRequestComments: unused,
+      createPullRequest: (input) => {
+        this.pullRequests.push(input);
+        if (this.error) return Promise.reject(this.error);
+        return Promise.resolve({
+          number: 7,
+          url: `https://github.com/${input.owner}/${input.repo}/pull/7`,
+        });
+      },
+    };
+  };
 }
 
 /** What a fake command does: return a result, or hang until aborted. */

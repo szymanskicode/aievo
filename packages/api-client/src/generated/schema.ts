@@ -1675,6 +1675,111 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/workspace/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Settings of the workspace, such as the model of each agent role */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Settings of the workspace, such as the model of each agent role */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["WorkspaceSettings"];
+                    };
+                };
+                /** @description Resource not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change settings of the workspace. The model of the Programista agent must be enabled, priced and have the capabilities the agent requires (422 otherwise); `null` clears it. */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateWorkspaceSettings"];
+                };
+            };
+            responses: {
+                /** @description Change settings of the workspace. The model of the Programista agent must be enabled, priced and have the capabilities the agent requires (422 otherwise); `null` clears it. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["WorkspaceSettings"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiError"];
+                    };
+                };
+                /** @description Resource not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiError"];
+                    };
+                };
+                /** @description Request body is not JSON */
+                415: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiError"];
+                    };
+                };
+                /** @description The request is valid but cannot be applied */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
     "/api/openapi.json": {
         parameters: {
             query?: never;
@@ -1753,6 +1858,11 @@ export interface components {
             preview?: {
                 port: number;
                 readyPath: string;
+            };
+            limits?: {
+                maxIterations?: number;
+                maxRunCostUsd?: number;
+                maxRunMinutes?: number;
             };
         };
         TestPolicy: {
@@ -1855,6 +1965,11 @@ export interface components {
                 port: number;
                 /** @default / */
                 readyPath: string;
+            };
+            limits?: {
+                maxIterations?: number;
+                maxRunCostUsd?: number;
+                maxRunMinutes?: number;
             };
         };
         TestPolicyInput: {
@@ -2198,6 +2313,18 @@ export interface components {
             modelProvider: boolean;
             githubToken: boolean;
             project: boolean;
+        };
+        WorkspaceSettings: {
+            agentModels: {
+                /** Format: uuid */
+                coder: string | null;
+            };
+        };
+        UpdateWorkspaceSettings: {
+            agentModels?: {
+                /** Format: uuid */
+                coder?: string | null;
+            };
         };
     };
     responses: never;

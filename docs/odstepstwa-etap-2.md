@@ -71,3 +71,46 @@ Lista punktów do przeniesienia do `docs/architecture.md` (sekcje 10, 11, 18) na
 - **Dokument (sekcja 9):** koszt z `usage` i cennika z bazy.
 - **Stan faktyczny:** tabela `model` ma tylko `priceIn`/`priceOut`, więc tokeny odczytu i zapisu cache są liczone po pełnej cenie wejścia (koszt zawyżony, limit bezpieczny). Limit kosztu kroku sprawdzany jest po każdej odpowiedzi modelu, więc jedno wywołanie może go przekroczyć.
 - **Proponowana zmiana:** osobne ceny cache w tabeli `model` (sekcja 5/9), gdy zaczniemy używać prompt cachingu.
+
+## 12. Przekroczenie kosztu runu kończy run jako `failed` (prompt 5)
+
+- **Dokument (sekcja 15):** „Koszt na run: 5 USD → run wstrzymany, użytkownik może podnieść limit i wznowić”.
+- **Stan faktyczny:** krok `implement` dostaje limit kosztu runu (`project.settings.limits.maxRunCostUsd`, domyślnie 5 USD); po przekroczeniu run kończy się `failed` z kodem `cost_limit` i komunikatem z kwotą i limitem, task → `needs_human`. Wznawiania runów jeszcze nie ma.
+- **Proponowana zmiana:** sekcja 15, tabela limitów, z adnotacją, od którego etapu działa wstrzymanie i wznowienie.
+
+## 13. Przekroczenie czasu runu nie zostawia zmian na gałęzi (prompt 5)
+
+- **Dokument (sekcja 15):** „Czas runu: 60 min → run przerwany, zmiany zostają na gałęzi”.
+- **Stan faktyczny:** run jest przerywany (`run_timeout`) bez commitu i pusha; katalog roboczy jest usuwany. Limit: `project.settings.limits.maxRunMinutes`, domyślnie `AIEVO_RUN_MAX_MINUTES` (60).
+- **Proponowana zmiana:** sekcja 15, gdy powstanie commit po każdym kroku (sekcja 10).
+
+## 14. Jeden commit na run, po kroku Programisty (prompt 5)
+
+- **Dokument (sekcja 10):** commity po każdym kroku zmieniającym pliki, z opisem kroku.
+- **Stan faktyczny:** run ma jeden krok zmieniający pliki (`implement`), więc powstaje jeden commit: tytuł taska i stopka `AIEvo-Task`, `AIEvo-Run`, `AIEvo-Agent: coder@<wersja presetu>`. Autor `AIEvo <nazwa agenta>`, e-mail z `AIEVO_GIT_AUTHOR_EMAIL`. Brak zmian → run `failed` (`no_changes`), bez PR.
+- **Proponowana zmiana:** bez zmiany dokumentu; do weryfikacji przy silniku pipeline'u (etap 3).
+
+## 15. Platforma sama uruchamia testy po Programiście (prompt 5)
+
+- **Dokument (sekcja 7):** testy uruchamia Inspektor (etap 3).
+- **Stan faktyczny:** po kroku `implement` worker robi lokalny commit, a potem uruchamia komendę `test` projektu jako krok `check` (agentKey `platform`). Dzięki tej kolejności pliki zostawione przez testy (raporty, cache) nie trafiają do PR, a run bez zmian kończy się `no_changes` bez uruchamiania testów. Wynik (komenda, status, ogon outputu) trafia do opisu PR obok raportu agenta z `finish`. Czerwone testy nie blokują PR, są w nim oznaczone ❌. Uwaga: ostatnie 60 linii outputu testów jest publikowane w PR (także w publicznym repo); token jest z niego usuwany, ale inne dane wypisywane przez testy repo trafią na GitHuba. Za długi output jest pomijany w opisie PR (zostaje w runie).
+- **Proponowana zmiana:** sekcja 8/10: krok weryfikacji platformy przed PR, dopóki nie ma Inspektora.
+
+## 16. Ochrona istniejących testów przez `git cat-file` w sandboxie (prompt 5)
+
+- **Dokument (sekcja 12):** Programista domyślnie nie może zmieniać istniejących testów (tylko dodawać nowe); egzekwuje to narzędzie zapisu.
+- **Stan faktyczny:** preset ma `permissions.existingTests: read-only`. `write_file`/`edit_file` odmawiają zapisu pliku pasującego do `testPolicy.testPaths` ∪ `**/*.test.*`, `**/*.spec.*`, `**/__tests__/**`, jeśli istnieje on w `origin/<gałąź bazowa>` (sprawdzane `git cat-file -e` w sandboxie). Nowe pliki testów można tworzyć i dalej edytować. Dodatkowe globy są potrzebne, bo domyślne `testPaths` nie łapią np. `App.test.tsx` z szablonu React.
+- **Druga linia obrony:** dozwolone komendy z argumentami (np. `npm run lint -- --fix`, `npm test -- -u`) mogą zmienić istniejący test poza narzędziami zapisu. Dlatego po kroku agenta worker sprawdza `git status` na hoście: zmienione lub usunięte pliki testów z bazy są przywracane (`git checkout HEAD -- …`) i wypisane w PR w sekcji „Existing tests restored”.
+- **Czysta kopia po instalacji:** pliki śledzone, które przepisała komenda install (np. lockfile innej wersji npm), są przywracane; nowe pliki spoza `.gitignore` przerywają run (`install_changed_files`), żeby nie trafiły do PR jako praca agenta.
+- **Proponowana zmiana:** sekcja 12, akapit o zabezpieczeniach.
+
+## 17. Kolejny run tego samego taska używa tej samej gałęzi (prompt 5)
+
+- **Stan faktyczny:** gałąź to `agent/<id taska>-<slug>`. Jeśli istnieje już na GitHubie (np. po udanym runie z PR), push kolejnego runu się nie uda (`push_failed`), bo adapter nigdy nie robi force-push. Poprawki po review jako kolejny run (sekcja 10) wymagają kontynuacji istniejącej gałęzi.
+- **Proponowana zmiana:** przy poprawkach po review (etap 3+): run startuje z istniejącej gałęzi taska albo gałąź dostaje sufiks runu.
+
+## 18. Model agenta wybierany w ustawieniach workspace'u (prompt 5)
+
+- **Dokument (sekcje 5, 6):** agent ma `modelRef` (alias z workspace'u), workspace ma „domyślny model per rola”.
+- **Stan faktyczny:** `workspace.settings.agentModels.coder` (id modelu), ustawiane przez `PATCH /api/workspace/settings`. Model musi być włączony, mieć capability z `requiredCapabilities` presetu (`tools`) i cennik (inaczej 422 `model_not_usable`). Start runu bez modelu → 409 `agent_model_missing`/`agent_model_unusable`. Aliasów modeli jeszcze nie ma. Preset agenta leży w `packages/presets/agents/coder/` (plik, nie wersjonowany rekord w bazie); wersja w kroku to hash plików presetu.
+- **Proponowana zmiana:** sekcja 5/6 przy Studio (etap 5): agenci w bazie, aliasy modeli.

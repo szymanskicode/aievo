@@ -28,9 +28,15 @@ export {
   isValidAgentBranch,
   slugify,
 } from './local/branch-name.js';
-export { createLocalGit, redactToken } from './local/local-git.js';
+export {
+  createLocalGit,
+  parseNameStatus,
+  parsePorcelainStatus,
+  redactToken,
+} from './local/local-git.js';
 export type {
   CloneInput,
+  ChangedFile,
   CommitInput,
   GitExec,
   GitExecOptions,

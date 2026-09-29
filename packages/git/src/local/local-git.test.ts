@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -8,7 +8,13 @@ import path from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { authEnv, createLocalGit, redactToken } from './local-git.js';
+import {
+  authEnv,
+  createLocalGit,
+  parseNameStatus,
+  parsePorcelainStatus,
+  redactToken,
+} from './local-git.js';
 import type { GitExec, GitExecOptions } from './local-git.js';
 import { LocalGitError } from './local-git-error.js';
 
@@ -233,6 +239,56 @@ describe('local git against a real repository', { timeout: 30_000 }, () => {
     }
   });
 
+  it('lists the files the agent branch changed against the base', async () => {
+    const remote = await bareRemote();
+    const local = await createLocalGit({ stateDir: path.join(root, 'state') });
+    const dir = path.join(root, 'repo');
+    await local.clone({ url: remote, dir, branch: 'main' });
+    await local.createBranch(dir, 'agent/abc-sum');
+    await writeFile(path.join(dir, 'README.md'), '# demo\nmore\n');
+    await mkdir(path.join(dir, 'src'));
+    await writeFile(path.join(dir, 'src', 'sum.ts'), 'export const sum = 1;\n');
+    await local.commitAll(dir, {
+      message: 'feat: sum',
+      author: { name: 'AIEvo', email: 'agent@aievo.local' },
+    });
+
+    expect(await local.changedFiles(dir, 'origin/main')).toEqual([
+      { status: 'modified', path: 'README.md' },
+      { status: 'added', path: 'src/sum.ts' },
+    ]);
+    await expect(local.changedFiles(dir, '--output=x')).rejects.toThrow(LocalGitError);
+  });
+
+  it('reports uncommitted changes and restores files from a ref', async () => {
+    const remote = await bareRemote();
+    const local = await createLocalGit({ stateDir: path.join(root, 'state') });
+    const dir = path.join(root, 'repo');
+    await local.clone({ url: remote, dir, branch: 'main' });
+    await writeFile(path.join(dir, '.gitignore'), 'ignored/\n');
+    await git(['add', '.gitignore'], dir);
+    await git(['commit', '-m', 'ignore'], dir);
+
+    await writeFile(path.join(dir, 'README.md'), 'changed\n');
+    await writeFile(path.join(dir, 'new.ts'), 'export {};\n');
+    await mkdir(path.join(dir, 'ignored'));
+    await writeFile(path.join(dir, 'ignored', 'cache.txt'), 'x');
+    await rm(path.join(dir, '.gitignore'));
+    await writeFile(path.join(dir, '.gitignore'), 'ignored/\n');
+    await rm(path.join(dir, 'README.md'));
+
+    expect(await local.workingChanges(dir)).toEqual([
+      { status: 'deleted', path: 'README.md' },
+      { status: 'added', path: 'new.ts' },
+    ]);
+
+    await local.restoreFiles(dir, 'HEAD', ['README.md']);
+
+    expect(await readFile(path.join(dir, 'README.md'), 'utf8')).toBe('# demo\r\n');
+    expect(await local.workingChanges(dir)).toEqual([{ status: 'added', path: 'new.ts' }]);
+    await expect(local.restoreFiles(dir, '--force', ['x'])).rejects.toThrow(LocalGitError);
+  });
+
   it('returns null when there is nothing to commit', async () => {
     const remote = await bareRemote();
     const local = await createLocalGit({ stateDir: path.join(root, 'state') });
@@ -312,5 +368,36 @@ describe('local git against a real repository', { timeout: 30_000 }, () => {
       expect(request.authorization?.toLowerCase()).toBe(expected.toLowerCase());
       expect(request.url).not.toContain(token);
     }
+  });
+});
+
+describe('parseNameStatus', () => {
+  it('maps git status letters and keeps unusual paths intact', () => {
+    const output = ['A', 'new file.ts', 'M', 'src/ä.ts', 'D', 'old.ts', 'T', 'link', ''].join(
+      String.fromCharCode(0),
+    );
+
+    expect(parseNameStatus(output)).toEqual([
+      { status: 'added', path: 'new file.ts' },
+      { status: 'modified', path: 'src/ä.ts' },
+      { status: 'deleted', path: 'old.ts' },
+      { status: 'modified', path: 'link' },
+    ]);
+    expect(parseNameStatus('')).toEqual([]);
+  });
+});
+
+describe('parsePorcelainStatus', () => {
+  it('reads index and working tree states and untracked files', () => {
+    const nul = String.fromCharCode(0);
+    const output = [' M a.ts', 'M  b.ts', ' D c.ts', '?? new dir/d.ts', 'A  e.ts', ''].join(nul);
+
+    expect(parsePorcelainStatus(output)).toEqual([
+      { status: 'modified', path: 'a.ts' },
+      { status: 'modified', path: 'b.ts' },
+      { status: 'deleted', path: 'c.ts' },
+      { status: 'added', path: 'new dir/d.ts' },
+      { status: 'added', path: 'e.ts' },
+    ]);
   });
 });

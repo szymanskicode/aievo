@@ -7,6 +7,7 @@ import { closeTestDb, getTestDb, resetDb } from '../test/db.js';
 import { createWorkspace } from '../test/fixtures.js';
 import { createProject } from './projects.js';
 import {
+  addStepUsage,
   claimRun,
   createRun,
   createToolCall,
@@ -19,11 +20,12 @@ import {
   listStepToolCalls,
   listTaskRuns,
   requestRunCancel,
+  setRunPullRequest,
   startStep,
   updateRun,
 } from './runs.js';
 import type { Run } from './runs.js';
-import { createTask } from './tasks.js';
+import { createTask, getTask, updateTask } from './tasks.js';
 
 const db = getTestDb();
 let workspaceId: string;
@@ -319,5 +321,134 @@ describe('steps and tool calls', () => {
         agentVersion: 'v1',
       }),
     ).toBeNull();
+  });
+});
+
+describe('task status along the run', () => {
+  const taskStatus = async (id = taskId) => (await getTask(db, workspaceId, id))?.status;
+
+  it('marks the task running when a run starts', async () => {
+    await mustCreateRun();
+
+    expect(await taskStatus()).toBe('running');
+  });
+
+  it.each([
+    ['succeeded', 'in_review'],
+    ['failed', 'needs_human'],
+    ['cancelled', 'ready'],
+  ] as const)('moves the task on when the run %s', async (status, expected) => {
+    const created = await mustCreateRun();
+    await mustClaim(created.id);
+
+    await finishRun(db, workspaceId, created.id, { status });
+
+    expect(await taskStatus()).toBe(expected);
+  });
+
+  it('leaves the task alone when the run had already finished', async () => {
+    const created = await mustCreateRun();
+    await mustClaim(created.id);
+    await finishRun(db, workspaceId, created.id, { status: 'succeeded' });
+    await updateTask(db, workspaceId, taskId, { status: 'done' });
+
+    expect(await finishRun(db, workspaceId, created.id, { status: 'failed' })).toBeNull();
+    expect(await taskStatus()).toBe('done');
+  });
+
+  it('keeps a status someone set by hand while the run was going', async () => {
+    const created = await mustCreateRun();
+    await mustClaim(created.id);
+    await updateTask(db, workspaceId, taskId, { status: 'cancelled' });
+
+    await finishRun(db, workspaceId, created.id, { status: 'failed' });
+
+    expect(await taskStatus()).toBe('cancelled');
+  });
+
+  it('makes the task ready again when a queued run is cancelled', async () => {
+    const created = await mustCreateRun();
+
+    await requestRunCancel(db, workspaceId, created.id);
+
+    expect(await taskStatus()).toBe('ready');
+  });
+
+  it('hands the tasks of orphaned runs to a human', async () => {
+    const active = await mustCreateRun();
+    const queuedTask = await newTask('Queued');
+    await mustCreateRun(queuedTask);
+    await mustClaim(active.id);
+
+    await failOrphanedRuns(db, { code: 'worker_restarted', message: 'Restarted' });
+
+    expect(await taskStatus()).toBe('needs_human');
+    expect(await taskStatus(queuedTask)).toBe('running');
+  });
+});
+
+describe('setRunPullRequest', () => {
+  it('records the pull request of an open run only', async () => {
+    const created = await mustCreateRun();
+    await mustClaim(created.id);
+    const pr = { url: 'https://github.com/o/r/pull/7', number: 7 };
+
+    expect(await setRunPullRequest(db, otherWorkspaceId, created.id, pr)).toBeNull();
+    expect(await setRunPullRequest(db, workspaceId, created.id, pr)).toMatchObject({
+      prUrl: pr.url,
+      prNumber: 7,
+    });
+
+    await finishRun(db, workspaceId, created.id, { status: 'succeeded' });
+    expect(await setRunPullRequest(db, workspaceId, created.id, pr)).toBeNull();
+  });
+});
+
+describe('addStepUsage', () => {
+  it('adds usage to the running step and sums the steps into the run', async () => {
+    const created = await mustCreateRun();
+    await mustClaim(created.id);
+    const first = await startStep(db, workspaceId, created.id, {
+      stepKey: 'implement',
+      agentKey: 'coder',
+      agentVersion: 'sha256:abc',
+    });
+    const usage = { costUsd: 0.0125, tokensIn: 1000, tokensOut: 200 };
+
+    expect(await addStepUsage(db, workspaceId, first!.id, usage)).toBe(true);
+    expect(await addStepUsage(db, workspaceId, first!.id, usage)).toBe(true);
+    await finishStep(db, workspaceId, first!.id, { status: 'succeeded' });
+    const second = await startStep(db, workspaceId, created.id, {
+      stepKey: 'check',
+      agentKey: 'platform',
+      agentVersion: 'platform-v1',
+    });
+    await addStepUsage(db, workspaceId, second!.id, { costUsd: 0.5, tokensIn: 1, tokensOut: 2 });
+
+    expect(await listRunSteps(db, workspaceId, created.id)).toMatchObject([
+      { costUsd: 0.025, tokensIn: 2000, tokensOut: 400 },
+      { costUsd: 0.5, tokensIn: 1, tokensOut: 2 },
+    ]);
+    expect(await getRun(db, workspaceId, created.id)).toMatchObject({
+      costUsd: 0.525,
+      tokensIn: 2001,
+      tokensOut: 402,
+    });
+  });
+
+  it('changes nothing for a finished step or another workspace', async () => {
+    const created = await mustCreateRun();
+    await mustClaim(created.id);
+    const started = await startStep(db, workspaceId, created.id, {
+      stepKey: 'implement',
+      agentKey: 'coder',
+      agentVersion: 'sha256:abc',
+    });
+    const usage = { costUsd: 1, tokensIn: 1, tokensOut: 1 };
+
+    expect(await addStepUsage(db, otherWorkspaceId, started!.id, usage)).toBe(false);
+    await finishStep(db, workspaceId, started!.id, { status: 'failed' });
+    expect(await addStepUsage(db, workspaceId, started!.id, usage)).toBe(false);
+    expect(await getRun(db, workspaceId, created.id)).toMatchObject({ costUsd: 0, tokensIn: 0 });
   });
 });
